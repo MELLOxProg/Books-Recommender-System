@@ -1,0 +1,700 @@
+---
+title: 'Docker Deployment'
+description: 'Containerize and deploy your Book Recommender System using Docker'
+---
+
+## Docker Deployment Guide
+
+Deploy your Book Recommender System using **Docker** for consistent, portable, and scalable containerized deployment across any environment.
+
+<img
+  src="/demo/3.png"
+  alt="Book Recommender System running in Docker container"
+/>
+
+## Prerequisites
+
+<AccordionGroup>
+  <Accordion title="Required Software">
+    - [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed and running
+    - [Docker Compose](https://docs.docker.com/compose/install/) (included with Docker Desktop)
+    - Git for cloning the repository
+    - At least 4GB RAM available for Docker
+  </Accordion>
+
+  <Accordion title="System Requirements">
+    - **CPU**: 2+ cores recommended
+    - **RAM**: 4GB minimum, 8GB recommended
+    - **Storage**: 2GB free space for images and containers
+    - **OS**: Windows 10/11, macOS 10.15+, or Linux
+  </Accordion>
+</AccordionGroup>
+
+## Quick Start
+
+### Method 1: Docker Compose (Recommended)
+
+<Steps>
+  <Step title="Clone Repository">
+    ```bash
+    git clone https://github.com/MELLOxProg/Books-Recommender-System.git
+    cd Books-Recommender-System
+    ```
+  </Step>
+
+  <Step title="Create Docker Compose File">
+    Create a `docker-compose.yml` file in your project root:
+    
+    ```yaml
+    version: '3.8'
+    
+    services:
+      book-recommender:
+        build: .
+        ports:
+          - "8501:8501"
+        volumes:
+          - ./artifacts:/app/artifacts:ro
+          - ./data:/app/data:ro
+        environment:
+          - STREAMLIT_SERVER_PORT=8501
+          - STREAMLIT_SERVER_ADDRESS=0.0.0.0
+          - STREAMLIT_SERVER_HEADLESS=true
+        restart: unless-stopped
+        healthcheck:
+          test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
+          interval: 30s
+          timeout: 10s
+          retries: 3
+    ```
+  </Step>
+
+  <Step title="Build and Run">
+    ```bash
+    # Build and start the container
+    docker-compose up --build
+    
+    # Run in background (detached mode)
+    docker-compose up -d --build
+    ```
+  </Step>
+
+  <Step title="Access Application">
+    Open your browser and navigate to:
+    
+    ```
+    http://localhost:8501
+    ```
+    
+    The Book Recommender System should be running in the container!
+  </Step>
+</Steps>
+
+### Method 2: Docker Commands
+
+<Steps>
+  <Step title="Build Docker Image">
+    ```bash
+    # Build the image
+    docker build -t book-recommender .
+    
+    # Verify image was created
+    docker images | grep book-recommender
+    ```
+  </Step>
+
+  <Step title="Run Container">
+    ```bash
+    # Run the container
+    docker run -d \
+      --name book-recommender-app \
+      -p 8501:8501 \
+      -v $(pwd)/artifacts:/app/artifacts:ro \
+      book-recommender
+    
+    # Check container status
+    docker ps
+    ```
+  </Step>
+
+  <Step title="View Logs">
+    ```bash
+    # View container logs
+    docker logs book-recommender-app
+    
+    # Follow logs in real-time
+    docker logs -f book-recommender-app
+    ```
+  </Step>
+</Steps>
+
+## Dockerfile Configuration
+
+Create an optimized `Dockerfile` for your Book Recommender System:
+
+```dockerfile
+# Use Python 3.9 slim image for smaller size
+FROM python:3.9-slim
+
+# Set working directory
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements first for better caching
+COPY requirements.txt .
+
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy application code
+COPY app.py .
+COPY setup.sh .
+COPY artifacts/ ./artifacts/
+COPY data/ ./data/
+
+# Make setup script executable
+RUN chmod +x setup.sh
+
+# Create non-root user for security
+RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
+USER appuser
+
+# Expose Streamlit port
+EXPOSE 8501
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+  CMD curl -f http://localhost:8501/_stcore/health || exit 1
+
+# Run the application
+CMD ["sh", "setup.sh"]
+```
+
+## Multi-Stage Build (Production)
+
+For production deployments, use a multi-stage build to reduce image size:
+
+```dockerfile
+# Build stage
+FROM python:3.9-slim as builder
+
+WORKDIR /app
+
+# Install build dependencies
+RUN apt-get update && apt-get install -y \
+    gcc \
+    g++ \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements and install dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir --user -r requirements.txt
+
+# Production stage
+FROM python:3.9-slim
+
+WORKDIR /app
+
+# Install runtime dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy Python packages from builder
+COPY --from=builder /root/.local /root/.local
+
+# Copy application files
+COPY app.py .
+COPY setup.sh .
+COPY artifacts/ ./artifacts/
+COPY data/ ./data/
+
+# Make setup script executable
+RUN chmod +x setup.sh
+
+# Create non-root user
+RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
+USER appuser
+
+# Update PATH for user packages
+ENV PATH=/root/.local/bin:$PATH
+
+EXPOSE 8501
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+  CMD curl -f http://localhost:8501/_stcore/health || exit 1
+
+CMD ["sh", "setup.sh"]
+```
+
+## Docker Compose Configurations
+
+### Development Configuration
+
+```yaml
+# docker-compose.dev.yml
+version: '3.8'
+
+services:
+  book-recommender:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    ports:
+      - "8501:8501"
+    volumes:
+      - .:/app
+      - /app/__pycache__
+    environment:
+      - STREAMLIT_SERVER_PORT=8501
+      - STREAMLIT_SERVER_ADDRESS=0.0.0.0
+      - STREAMLIT_SERVER_HEADLESS=true
+      - STREAMLIT_SERVER_RUN_ON_SAVE=true
+      - DEBUG=true
+    restart: unless-stopped
+```
+
+### Production Configuration
+
+```yaml
+# docker-compose.prod.yml
+version: '3.8'
+
+services:
+  book-recommender:
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./artifacts:/app/artifacts:ro
+      - ./logs:/app/logs
+    environment:
+      - STREAMLIT_SERVER_PORT=8501
+      - STREAMLIT_SERVER_ADDRESS=0.0.0.0
+      - STREAMLIT_SERVER_HEADLESS=true
+      - DEBUG=false
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1.0'
+        reservations:
+          memory: 1G
+          cpus: '0.5'
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Optional: Add reverse proxy
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - book-recommender
+    restart: unless-stopped
+```
+
+## Environment-Specific Deployments
+
+### Local Development
+
+```bash
+# Start development environment
+docker-compose -f docker-compose.dev.yml up --build
+
+# Rebuild after code changes
+docker-compose -f docker-compose.dev.yml up --build --force-recreate
+
+# View logs
+docker-compose -f docker-compose.dev.yml logs -f
+```
+
+### Production Deployment
+
+```bash
+# Start production environment
+docker-compose -f docker-compose.prod.yml up -d --build
+
+# Scale the application
+docker-compose -f docker-compose.prod.yml up -d --scale book-recommender=3
+
+# Update application
+docker-compose -f docker-compose.prod.yml pull
+docker-compose -f docker-compose.prod.yml up -d
+```
+
+## Container Management
+
+### Useful Docker Commands
+
+<CodeGroup>
+
+```bash Basic Container Management
+# List running containers
+docker ps
+
+# List all containers (including stopped)
+docker ps -a
+
+# Stop container
+docker stop book-recommender-app
+
+# Start stopped container
+docker start book-recommender-app
+
+# Remove container
+docker rm book-recommender-app
+
+# Remove image
+docker rmi book-recommender
+```
+
+```bash Container Debugging
+# Execute command in running container
+docker exec -it book-recommender-app bash
+
+# View container logs
+docker logs book-recommender-app
+
+# View real-time logs
+docker logs -f book-recommender-app
+
+# Inspect container details
+docker inspect book-recommender-app
+
+# View container resource usage
+docker stats book-recommender-app
+```
+
+```bash Image Management
+# List images
+docker images
+
+# Remove unused images
+docker image prune
+
+# Remove all unused resources
+docker system prune -a
+
+# Build with no cache
+docker build --no-cache -t book-recommender .
+
+# Tag image for registry
+docker tag book-recommender your-registry/book-recommender:latest
+```
+
+</CodeGroup>
+
+### Container Health Monitoring
+
+```bash
+# Check container health
+docker inspect --format='{{.State.Health.Status}}' book-recommender-app
+
+# View health check logs
+docker inspect --format='{{range .State.Health.Log}}{{.Output}}{{end}}' book-recommender-app
+
+# Manual health check
+curl -f http://localhost:8501/_stcore/health
+```
+
+## Advanced Configurations
+
+### Custom Streamlit Configuration
+
+Create `.streamlit/config.toml` for Docker-specific settings:
+
+```toml
+[server]
+headless = true
+port = 8501
+address = "0.0.0.0"
+enableCORS = false
+enableWebsocketCompression = true
+
+[global]
+dataFrameSerialization = "legacy"
+
+[theme]
+primaryColor = "#0D9373"
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#F0F2F6"
+textColor = "#262730"
+```
+
+### Environment Variables
+
+```bash
+# .env file for environment variables
+STREAMLIT_SERVER_PORT=8501
+STREAMLIT_SERVER_ADDRESS=0.0.0.0
+STREAMLIT_SERVER_HEADLESS=true
+DEBUG=false
+MODEL_PATH=/app/artifacts/
+LOG_LEVEL=INFO
+```
+
+### Volume Management
+
+```yaml
+# docker-compose.yml with persistent volumes
+version: '3.8'
+
+services:
+  book-recommender:
+    build: .
+    ports:
+      - "8501:8501"
+    volumes:
+      # Read-only model artifacts
+      - ./artifacts:/app/artifacts:ro
+      # Persistent logs
+      - book-logs:/app/logs
+      # Configuration files
+      - ./config:/app/config:ro
+    environment:
+      - STREAMLIT_SERVER_PORT=8501
+    restart: unless-stopped
+
+volumes:
+  book-logs:
+    driver: local
+```
+
+## Container Registry Deployment
+
+### Build and Push to Registry
+
+```bash
+# Build image
+docker build -t book-recommender .
+
+# Tag for registry
+docker tag book-recommender your-registry/book-recommender:latest
+docker tag book-recommender your-registry/book-recommender:v1.0.0
+
+# Push to registry
+docker push your-registry/book-recommender:latest
+docker push your-registry/book-recommender:v1.0.0
+```
+
+### Deploy from Registry
+
+```yaml
+# docker-compose.registry.yml
+version: '3.8'
+
+services:
+  book-recommender:
+    image: your-registry/book-recommender:latest
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./artifacts:/app/artifacts:ro
+    environment:
+      - STREAMLIT_SERVER_PORT=8501
+    restart: unless-stopped
+```
+
+## Troubleshooting
+
+### Common Issues
+
+<AccordionGroup>
+  <Accordion title="Container Won't Start">
+    **Problem**: Container exits immediately after starting
+    
+    **Solutions**:
+    ```bash
+    # Check container logs
+    docker logs book-recommender-app
+    
+    # Check if artifacts directory exists
+    docker exec -it book-recommender-app ls -la /app/artifacts/
+    
+    # Verify setup script permissions
+    docker exec -it book-recommender-app ls -la /app/setup.sh
+    ```
+  </Accordion>
+
+  <Accordion title="Port Already in Use">
+    **Problem**: Port 8501 is already occupied
+    
+    **Solutions**:
+    ```bash
+    # Use different port
+    docker run -p 8502:8501 book-recommender
+    
+    # Find process using port 8501
+    lsof -i :8501  # macOS/Linux
+    netstat -ano | findstr :8501  # Windows
+    
+    # Stop conflicting process
+    docker-compose down
+    ```
+  </Accordion>
+
+  <Accordion title="Memory Issues">
+    **Problem**: Container runs out of memory
+    
+    **Solutions**:
+    ```bash
+    # Increase memory limit
+    docker run -m 2g book-recommender
+    
+    # Monitor memory usage
+    docker stats book-recommender-app
+    
+    # Optimize Dockerfile for memory usage
+    # - Use multi-stage builds
+    # - Remove unnecessary packages
+    # - Use .dockerignore file
+    ```
+  </Accordion>
+
+  <Accordion title="File Permission Issues">
+    **Problem**: Permission denied errors
+    
+    **Solutions**:
+    ```dockerfile
+    # Fix permissions in Dockerfile
+    RUN chmod +x setup.sh
+    RUN chown -R appuser:appuser /app
+    USER appuser
+    ```
+    
+    ```bash
+    # Fix host permissions
+    chmod -R 755 artifacts/
+    chmod +x setup.sh
+    ```
+  </Accordion>
+</AccordionGroup>
+
+### Performance Optimization
+
+<CodeGroup>
+
+```dockerfile Optimized Dockerfile
+# Use specific Python version
+FROM python:3.9-slim
+
+# Install only necessary packages
+RUN apt-get update && apt-get install -y \
+    curl \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Use .dockerignore to exclude unnecessary files
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy only necessary files
+COPY app.py setup.sh ./
+COPY artifacts/ ./artifacts/
+
+# Optimize image layers
+RUN chmod +x setup.sh && \
+    useradd -m -u 1000 appuser && \
+    chown -R appuser:appuser /app
+
+USER appuser
+EXPOSE 8501
+CMD ["sh", "setup.sh"]
+```
+
+```dockerignore .dockerignore
+# Exclude unnecessary files
+.git
+.gitignore
+README.md
+*.md
+docs/
+demo/
+data/
+.env
+.vscode/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+```
+
+</CodeGroup>
+
+## Production Considerations
+
+### Security Best Practices
+
+1. **Use non-root user**: Always run containers as non-root
+2. **Minimize image size**: Use slim base images and multi-stage builds
+3. **Update regularly**: Keep base images and dependencies updated
+4. **Scan for vulnerabilities**: Use `docker scan` or security tools
+5. **Use secrets management**: Don't hardcode sensitive data
+
+### Monitoring and Logging
+
+```yaml
+# Add logging configuration
+version: '3.8'
+
+services:
+  book-recommender:
+    build: .
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./logs:/app/logs
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    restart: unless-stopped
+```
+
+### Scaling and Load Balancing
+
+```yaml
+# Scale with load balancer
+version: '3.8'
+
+services:
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - book-recommender
+
+  book-recommender:
+    build: .
+    expose:
+      - "8501"
+    restart: unless-stopped
+    deploy:
+      replicas: 3
+```
+
+Your Book Recommender System is now containerized and ready for deployment in any Docker environment!

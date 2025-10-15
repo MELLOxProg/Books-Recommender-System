@@ -1,0 +1,370 @@
+---
+title: 'Get Book Details'
+api: 'GET /books/{book_name}/info'
+description: 'Retrieve detailed information about a specific book'
+---
+
+## Overview
+
+Get comprehensive information about a specific book including metadata, ratings statistics, and availability status.
+
+<RequestExample>
+```bash
+GET /books/harry potter and the philosopher's stone/info
+```
+</RequestExample>
+
+<ResponseExample>
+```json
+{
+  "title": "Harry Potter and the Philosopher's Stone",
+  "author": "J.K. Rowling",
+  "publisher": "Bloomsbury Publishing PLC",
+  "year": 1997,
+  "isbn": "0747532699",
+  "image_url": "http://images.amazon.com/images/P/0747532699.01.LZZZZZZZ.jpg",
+  "average_rating": 8.5,
+  "total_ratings": 1250,
+  "rating_distribution": {
+    "1": 5,
+    "2": 12,
+    "3": 28,
+    "4": 89,
+    "5": 156,
+    "6": 234,
+    "7": 298,
+    "8": 312,
+    "9": 89,
+    "10": 27
+  },
+  "recommendation_eligible": true,
+  "popularity_rank": 15
+}
+```
+</ResponseExample>
+
+## Parameters
+
+<ParamField path="book_name" type="string" required>
+  The title of the book to retrieve information for. Case-insensitive matching is performed. Spaces should be URL-encoded or replaced with hyphens.
+</ParamField>
+
+## Response Schema
+
+<ResponseField name="title" type="string">
+  The full title of the book
+</ResponseField>
+
+<ResponseField name="author" type="string">
+  The primary author of the book
+</ResponseField>
+
+<ResponseField name="publisher" type="string">
+  The publishing company
+</ResponseField>
+
+<ResponseField name="year" type="integer">
+  The year of publication
+</ResponseField>
+
+<ResponseField name="isbn" type="string">
+  The ISBN identifier for the book
+</ResponseField>
+
+<ResponseField name="image_url" type="string">
+  URL to the book's cover image (medium size)
+</ResponseField>
+
+<ResponseField name="average_rating" type="float">
+  Average user rating (1-10 scale) based on all user ratings
+</ResponseField>
+
+<ResponseField name="total_ratings" type="integer">
+  Total number of user ratings received
+</ResponseField>
+
+<ResponseField name="rating_distribution" type="object">
+  Breakdown of ratings by score (1-10)
+</ResponseField>
+
+<ResponseField name="recommendation_eligible" type="boolean">
+  Whether this book can be used for generating recommendations (requires 50+ ratings)
+</ResponseField>
+
+<ResponseField name="popularity_rank" type="integer">
+  Rank by total number of ratings (1 = most popular)
+</ResponseField>
+
+## Error Responses
+
+<ErrorExample status="404">
+```json
+{
+  "error": "Book 'nonexistent book' not found in dataset"
+}
+```
+</ErrorExample>
+
+<ErrorExample status="400">
+```json
+{
+  "error": "Invalid book name format"
+}
+```
+</ErrorExample>
+
+## Implementation Details
+
+Book information is retrieved from multiple data sources:
+
+1. **Metadata**: Title, author, publisher, year, ISBN from book catalog
+2. **Ratings**: Aggregated statistics from user rating data
+3. **Images**: Cover image URLs from publisher data
+4. **Popularity**: Calculated rank based on total rating count
+
+### Data Processing
+
+- **Title Normalization**: Converts to lowercase, removes punctuation for matching
+- **Rating Aggregation**: Calculates mean, distribution, and total count
+- **Popularity Ranking**: Ranks books by total number of ratings
+- **Eligibility Check**: Determines if book meets minimum rating threshold
+
+## Usage Examples
+
+### Python Integration
+
+```python
+import requests
+from urllib.parse import quote
+
+def get_book_info(book_title):
+    """Get detailed book information"""
+    
+    # URL encode the book title
+    encoded_title = quote(book_title)
+    
+    response = requests.get(f'https://your-api.com/books/{encoded_title}/info')
+    
+    if response.status_code == 404:
+        print(f"Book '{book_title}' not found")
+        return None
+    
+    return response.json()
+
+# Usage
+book_info = get_book_info("To Kill a Mockingbird")
+
+if book_info:
+    print(f"Title: {book_info['title']}")
+    print(f"Author: {book_info['author']}")
+    print(f"Average Rating: {book_info['average_rating']}/10")
+    print(f"Total Ratings: {book_info['total_ratings']:,}")
+    print(f"Published: {book_info['year']}")
+    print(f"Popularity Rank: #{book_info['popularity_rank']}")
+    
+    # Display rating distribution
+    print("\nRating Distribution:")
+    for rating, count in book_info['rating_distribution'].items():
+        percentage = (count / book_info['total_ratings']) * 100
+        print(f"  {rating}: {count} ({percentage:.1f}%)")
+```
+
+### JavaScript/Fetch API
+
+```javascript
+async function getBookInfo(bookTitle) {
+    try {
+        // URL encode the book title
+        const encodedTitle = encodeURIComponent(bookTitle);
+        
+        const response = await fetch(`/books/${encodedTitle}/info`);
+        
+        if (!response.ok) {
+            if (response.status === 404) {
+                throw new Error(`Book '${bookTitle}' not found`);
+            }
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        return await response.json();
+    } catch (error) {
+        console.error('Error fetching book info:', error);
+        throw error;
+    }
+}
+
+// Usage
+getBookInfo('1984')
+    .then(bookInfo => {
+        console.log(`📚 ${bookInfo.title}`);
+        console.log(`👤 Author: ${bookInfo.author}`);
+        console.log(`⭐ Rating: ${bookInfo.average_rating}/10 (${bookInfo.total_ratings} ratings)`);
+        console.log(`📅 Published: ${bookInfo.year}`);
+        console.log(`🏆 Popularity: #${bookInfo.popularity_rank}`);
+        
+        // Display cover image
+        if (bookInfo.image_url) {
+            console.log(`🖼️ Cover: ${bookInfo.image_url}`);
+        }
+    })
+    .catch(error => console.error('Error:', error.message));
+```
+
+### cURL
+
+```bash
+# Basic request
+curl "https://your-api.com/books/harry%20potter%20and%20the%20philosopher's%20stone/info"
+
+# With pretty printing
+curl "https://your-api.com/books/pride%20and%20prejudice/info" | jq '.'
+
+# Check specific fields
+curl "https://your-api.com/books/1984/info" | jq '{title, author, average_rating, total_ratings}'
+```
+
+## Advanced Usage
+
+### Batch Book Information
+
+```python
+import requests
+import asyncio
+import aiohttp
+from urllib.parse import quote
+
+async def get_multiple_books_info(book_titles):
+    """Get information for multiple books concurrently"""
+    
+    async with aiohttp.ClientSession() as session:
+        tasks = []
+        
+        for title in book_titles:
+            encoded_title = quote(title)
+            url = f'https://your-api.com/books/{encoded_title}/info'
+            tasks.append(session.get(url))
+        
+        responses = await asyncio.gather(*tasks, return_exceptions=True)
+        
+        results = []
+        for i, response in enumerate(responses):
+            if isinstance(response, Exception):
+                results.append({
+                    'title': book_titles[i],
+                    'error': str(response)
+                })
+            else:
+                if response.status == 200:
+                    data = await response.json()
+                    results.append(data)
+                else:
+                    results.append({
+                        'title': book_titles[i],
+                        'error': f'HTTP {response.status}'
+                    })
+        
+        return results
+
+# Usage
+book_titles = [
+    "Harry Potter and the Philosopher's Stone",
+    "The Lord of the Rings",
+    "1984",
+    "Pride and Prejudice"
+]
+
+book_infos = asyncio.run(get_multiple_books_info(book_titles))
+
+for book_info in book_infos:
+    if 'error' in book_info:
+        print(f"❌ {book_info['title']}: {book_info['error']}")
+    else:
+        print(f"✅ {book_info['title']}: {book_info['average_rating']}/10")
+```
+
+### Book Comparison
+
+```python
+def compare_books(book_titles):
+    """Compare multiple books side by side"""
+    
+    book_infos = []
+    for title in book_titles:
+        info = get_book_info(title)
+        if info:
+            book_infos.append(info)
+    
+    if not book_infos:
+        print("No valid books found for comparison")
+        return
+    
+    # Create comparison table
+    print(f"{'Title':<30} {'Author':<20} {'Rating':<8} {'Ratings':<8} {'Year':<6}")
+    print("-" * 80)
+    
+    for book in book_infos:
+        print(f"{book['title'][:29]:<30} "
+              f"{book['author'][:19]:<20} "
+              f"{book['average_rating']:<8.1f} "
+              f"{book['total_ratings']:<8,} "
+              f"{book['year']:<6}")
+    
+    # Find best rated book
+    best_book = max(book_infos, key=lambda x: x['average_rating'])
+    print(f"\n🏆 Highest Rated: {best_book['title']} ({best_book['average_rating']}/10)")
+    
+    # Find most popular book
+    popular_book = max(book_infos, key=lambda x: x['total_ratings'])
+    print(f"📊 Most Popular: {popular_book['title']} ({popular_book['total_ratings']:,} ratings)")
+
+# Usage
+compare_books([
+    "Harry Potter and the Philosopher's Stone",
+    "The Lord of the Rings",
+    "1984"
+])
+```
+
+## Performance Considerations
+
+<Note>
+  **Response Time**: Typical response time is 50-200ms for book information retrieval.
+</Note>
+
+### Caching Strategy
+
+- **Book Metadata**: Cached for 24 hours
+- **Rating Statistics**: Cached for 1 hour  
+- **Popularity Rankings**: Updated daily
+- **Image URLs**: Cached indefinitely (rarely change)
+
+### Rate Limits
+
+- **Free Tier**: 100 requests/hour
+- **Pro Tier**: 1,000 requests/hour
+- **Enterprise**: Custom limits available
+
+## Data Quality
+
+### Book Matching
+
+The API performs fuzzy matching to handle variations in book titles:
+
+- **Case Insensitive**: "Harry Potter" matches "harry potter"
+- **Punctuation Normalized**: "Harry Potter!" matches "Harry Potter"
+- **Whitespace Normalized**: "Harry  Potter" matches "Harry Potter"
+- **Partial Matching**: "Harry Potter Philosopher" matches full title
+
+### Data Sources
+
+Book information comes from the **Book Crossing dataset** with additional metadata from:
+
+- **Publisher Catalogs**: Author, publisher, publication year
+- **ISBN Database**: Standardized book identifiers
+- **Cover Image Services**: High-quality book cover images
+
+## Related Endpoints
+
+- [Get Recommendations](/api-reference/endpoint/get-recommendations) - Get book recommendations
+- [Search Books](/api-reference/introduction#search-books) - Find books by title search
+- [Health Check](/api-reference/introduction#health-check) - Verify API status

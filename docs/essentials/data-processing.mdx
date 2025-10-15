@@ -1,0 +1,594 @@
+---
+title: 'Data Processing'
+description: 'Understanding the data pipeline and preprocessing steps for the recommendation system'
+---
+
+## Dataset Overview
+
+The Book Recommender System is built on the **Book Crossing** dataset, one of the most comprehensive book rating datasets available. This dataset provides the foundation for our collaborative filtering approach.
+
+<img
+  src="/frontend1.png"
+  alt="Book Recommender System Interface showing processed data results"
+/>
+
+## Dataset Components
+
+### 1. Book Crossing Dataset Structure
+
+The system processes three main data files that together create a comprehensive view of user-book interactions:
+
+<AccordionGroup>
+  <Accordion title="BX-Books.csv - Book Metadata (271,379 books)">
+    **Size**: 77.8 MB | **Records**: 271,379 unique books
+    
+    ```python path=null start=null
+    # Book metadata schema
+    {
+        'ISBN': '0195153448',                    # Unique identifier
+        'Book-Title': 'Classical Mythology',     # Book title
+        'Book-Author': 'Mark P. O. Morford',     # Author name
+        'Year-Of-Publication': 2002,             # Publication year
+        'Publisher': 'Oxford University Press',  # Publisher
+        'Image-URL-S': 'http://images.amazon..', # Small cover (small)
+        'Image-URL-M': 'http://images.amazon..', # Medium cover
+        'Image-URL-L': 'http://images.amazon..'  # Large cover
+    }
+    ```
+    
+    **Key Characteristics**:
+    - Books span multiple decades (1900-2050+)
+    - Multiple languages and publishers
+    - Complete cover image URLs for visualization
+    - Some entries have publication year anomalies (future dates)
+  </Accordion>
+
+  <Accordion title="BX-Users.csv - User Demographics (278,858 users)">
+    **Size**: 12.3 MB | **Records**: 278,858 unique users
+    
+    ```python path=null start=null
+    # User demographics schema
+    {
+        'User-ID': 1,                           # Unique user identifier
+        'Location': 'nyc, new york, usa',       # Location string
+        'Age': 32                               # User age (if provided)
+    }
+    ```
+    
+    **Demographics Insights**:
+    - Age range: 5-244 years (requires cleaning)
+    - Global user base with location strings
+    - Many users have missing age information
+    - Location format: "city, state/province, country"
+  </Accordion>
+
+  <Accordion title="BX-Book-Ratings.csv - Rating Data (1,149,780 ratings)">
+    **Size**: 30.7 MB | **Records**: 1,149,780 user-book interactions
+    
+    ```python path=null start=null
+    # Rating interaction schema
+    {
+        'User-ID': 276725,        # User who rated
+        'ISBN': '034545104X',     # Book that was rated
+        'Book-Rating': 0          # Rating (0-10 scale)
+    }
+    ```
+    
+    **Rating Distribution**:
+    - Scale: 0-10 (where 0 = implicit feedback, 1-10 = explicit ratings)
+    - Explicit ratings: ~383K ratings (ratings > 0)
+    - Implicit feedback: ~766K interactions (rating = 0)
+    - Highly sparse matrix: ~99.98% sparsity
+  </Accordion>
+</AccordionGroup>
+
+## Data Processing Pipeline
+
+Our data processing pipeline transforms raw CSV files into machine learning-ready matrices through several critical steps:
+
+### Phase 1: Data Loading and Initial Cleaning
+
+<Steps>
+  <Step title="Load Raw Data">
+    ```python path=null start=null
+    import pandas as pd
+    import numpy as np
+    
+    # Load datasets with proper encoding
+    books = pd.read_csv('data/BX-Books.csv', 
+                       sep=';', 
+                       encoding='latin-1',
+                       error_bad_lines=False,
+                       warn_bad_lines=False)
+    
+    users = pd.read_csv('data/BX-Users.csv', 
+                       sep=';', 
+                       encoding='latin-1')
+    
+    ratings = pd.read_csv('data/BX-Book-Ratings.csv', 
+                         sep=';', 
+                         encoding='latin-1')
+    
+    print(f"Loaded {len(books)} books, {len(users)} users, {len(ratings)} ratings")
+    ```
+  </Step>
+
+  <Step title="Handle Malformed Records">
+    ```python path=null start=null
+    # The dataset has some parsing issues due to semicolon delimiters
+    # appearing within text fields
+    
+    print(f"Books shape before cleaning: {books.shape}")
+    print(f"Expected columns: {books.columns.tolist()}")
+    
+    # Remove rows with incorrect number of columns
+    books = books.dropna(subset=['Book-Title', 'Book-Author'])
+    
+    # Clean book titles (remove leading/trailing whitespace)
+    books['Book-Title'] = books['Book-Title'].str.strip()
+    books['Book-Author'] = books['Book-Author'].str.strip()
+    
+    print(f"Books shape after cleaning: {books.shape}")
+    ```
+  </Step>
+
+  <Step title="Data Type Optimization">
+    ```python path=null start=null
+    # Optimize memory usage
+    ratings['User-ID'] = ratings['User-ID'].astype('int32')
+    ratings['Book-Rating'] = ratings['Book-Rating'].astype('int8')
+    
+    # Convert categorical data
+    books['Book-Author'] = books['Book-Author'].astype('category')
+    books['Publisher'] = books['Publisher'].astype('category') 
+    
+    # Handle publication years
+    books['Year-Of-Publication'] = pd.to_numeric(
+        books['Year-Of-Publication'], 
+        errors='coerce'
+    )
+    
+    # Filter realistic publication years (1900-2025)
+    books = books[
+        books['Year-Of-Publication'].between(1900, 2025, na=False) |
+        books['Year-Of-Publication'].isna()
+    ]
+    ```
+  </Step>
+</Steps>
+
+### Phase 2: Rating Analysis and Filtering
+
+<Tabs>
+  <Tab title="Rating Distribution Analysis">
+    ```python path=null start=null
+    # Analyze rating patterns
+    rating_counts = ratings['Book-Rating'].value_counts().sort_index()
+    
+    print("Rating Distribution:")
+    print(rating_counts)
+    
+    # Separate implicit (0) and explicit (1-10) ratings
+    implicit_ratings = ratings[ratings['Book-Rating'] == 0]
+    explicit_ratings = ratings[ratings['Book-Rating'] > 0]
+    
+    print(f"Implicit feedback: {len(implicit_ratings):,} ({len(implicit_ratings)/len(ratings)*100:.1f}%)")
+    print(f"Explicit ratings: {len(explicit_ratings):,} ({len(explicit_ratings)/len(ratings)*100:.1f}%)")
+    
+    # For our collaborative filtering, focus on explicit ratings
+    ratings_explicit = explicit_ratings.copy()
+    ```
+  </Tab>
+
+  <Tab title="User Activity Filtering">
+    ```python path=null start=null
+    # Filter users with sufficient rating history
+    user_rating_counts = ratings_explicit['User-ID'].value_counts()
+    
+    print(f"User rating distribution:")
+    print(f"Mean ratings per user: {user_rating_counts.mean():.1f}")
+    print(f"Median ratings per user: {user_rating_counts.median():.1f}")
+    print(f"Users with 1 rating: {(user_rating_counts == 1).sum():,}")
+    print(f"Users with 200+ ratings: {(user_rating_counts >= 200).sum():,}")
+    
+    # Keep users with at least 200 ratings for better recommendations
+    MIN_USER_RATINGS = 200
+    active_users = user_rating_counts[user_rating_counts >= MIN_USER_RATINGS].index
+    
+    print(f"Active users (>={MIN_USER_RATINGS} ratings): {len(active_users):,}")
+    ```
+  </Tab>
+
+  <Tab title="Book Popularity Filtering">
+    ```python path=null start=null
+    # Filter books with sufficient ratings
+    book_rating_counts = ratings_explicit['ISBN'].value_counts()
+    
+    print(f"Book rating distribution:")
+    print(f"Mean ratings per book: {book_rating_counts.mean():.1f}")
+    print(f"Books with 1 rating: {(book_rating_counts == 1).sum():,}")
+    print(f"Books with 50+ ratings: {(book_rating_counts >= 50).sum():,}")
+    
+    # Keep books with at least 50 ratings
+    MIN_BOOK_RATINGS = 50
+    popular_books = book_rating_counts[book_rating_counts >= MIN_BOOK_RATINGS].index
+    
+    print(f"Popular books (>={MIN_BOOK_RATINGS} ratings): {len(popular_books):,}")
+    
+    # Create filtered dataset
+    filtered_ratings = ratings_explicit[
+        (ratings_explicit['User-ID'].isin(active_users)) &
+        (ratings_explicit['ISBN'].isin(popular_books))
+    ]
+    
+    print(f"Filtered dataset: {len(filtered_ratings):,} ratings")
+    ```
+  </Tab>
+</Tabs>
+
+### Phase 3: Feature Engineering
+
+<CodeGroup>
+
+```python Data Merging
+# Merge ratings with book metadata
+final_rating = filtered_ratings.merge(
+    books,
+    left_on='ISBN',
+    right_on='ISBN',
+    how='left'
+)
+
+# Remove entries without book metadata
+final_rating = final_rating.dropna(subset=['Book-Title'])
+
+print(f"Final merged dataset: {len(final_rating):,} records")
+
+# Create standardized title for matching
+final_rating['title'] = (final_rating['Book-Title']
+                        .str.lower()
+                        .str.strip()
+                        .str.replace(r'[^\w\s]', '', regex=True)  # Remove punctuation
+                        .str.replace(r'\s+', ' ', regex=True))    # Normalize whitespace
+```
+
+```python Pivot Table Creation
+# Create user-item rating matrix
+book_pivot = final_rating.pivot_table(
+    index='title',           # Books as rows
+    columns='User-ID',       # Users as columns  
+    values='Book-Rating',    # Ratings as values
+    fill_value=0             # Fill missing with 0
+)
+
+print(f"Pivot table shape: {book_pivot.shape}")
+print(f"Books: {book_pivot.shape[0]:,}")
+print(f"Users: {book_pivot.shape[1]:,}")
+
+# Calculate sparsity
+total_elements = book_pivot.shape[0] * book_pivot.shape[1]
+non_zero_elements = (book_pivot != 0).sum().sum()
+sparsity = (1 - non_zero_elements / total_elements) * 100
+
+print(f"Matrix sparsity: {sparsity:.2f}%")
+```
+
+```python Data Validation
+# Validate the processed data
+def validate_processed_data(book_pivot, final_rating):
+    """Comprehensive data validation"""
+    
+    validation_results = {}
+    
+    # Check rating ranges
+    min_rating = book_pivot.min().min()
+    max_rating = book_pivot.max().max()
+    validation_results['rating_range'] = (min_rating >= 0 and max_rating <= 10)
+    
+    # Check for duplicates
+    duplicate_books = final_rating['title'].duplicated().sum()
+    validation_results['no_duplicates'] = (duplicate_books == 0)
+    
+    # Check matrix consistency
+    expected_books = len(final_rating['title'].unique())
+    actual_books = book_pivot.shape[0]
+    validation_results['book_count_match'] = (expected_books == actual_books)
+    
+    # Check minimum ratings per book
+    min_ratings_per_book = (book_pivot > 0).sum(axis=1).min()
+    validation_results['min_ratings_met'] = (min_ratings_per_book >= 50)
+    
+    print("Data Validation Results:")
+    for check, passed in validation_results.items():
+        status = "✅ PASSED" if passed else "❌ FAILED"
+        print(f"  {check}: {status}")
+    
+    return all(validation_results.values())
+
+# Run validation
+is_valid = validate_processed_data(book_pivot, final_rating)
+print(f"\nOverall data quality: {'✅ VALID' if is_valid else '❌ INVALID'}")
+```
+
+</CodeGroup>
+
+## Advanced Data Processing
+
+### Handling Edge Cases
+
+<AccordionGroup>
+  <Accordion title="Duplicate Book Handling">
+    ```python path=null start=null
+    # Books can have multiple entries due to different editions
+    def consolidate_duplicate_books(final_rating):
+        """Consolidate books with similar titles"""
+        
+        # Find potential duplicates
+        title_groups = final_rating.groupby('title').agg({
+            'ISBN': 'nunique',
+            'Book-Title': lambda x: x.iloc[0],  # Keep first original title
+            'Book-Author': lambda x: x.mode().iloc[0] if len(x.mode()) > 0 else x.iloc[0],
+            'Book-Rating': 'count'
+        }).reset_index()
+        
+        # Books with multiple ISBNs (potential duplicates)
+        potential_duplicates = title_groups[title_groups['ISBN'] > 1]
+        
+        print(f"Found {len(potential_duplicates)} books with multiple ISBNs")
+        
+        # For duplicates, keep the ISBN with the most ratings
+        for title in potential_duplicates['title']:
+            title_data = final_rating[final_rating['title'] == title]
+            isbn_counts = title_data['ISBN'].value_counts()
+            primary_isbn = isbn_counts.index[0]  # Most common ISBN
+            
+            # Remove other ISBNs for this title
+            final_rating = final_rating[
+                ~((final_rating['title'] == title) & 
+                  (final_rating['ISBN'] != primary_isbn))
+            ]
+        
+        return final_rating
+    
+    # Apply duplicate consolidation
+    final_rating = consolidate_duplicate_books(final_rating)
+    ```
+  </Accordion>
+
+  <Accordion title="Rating Bias Correction">
+    ```python path=null start=null
+    # Some users are consistently harsh or generous raters
+    def analyze_user_bias(final_rating):
+        """Analyze and potentially correct for user rating bias"""
+        
+        user_stats = final_rating.groupby('User-ID').agg({
+            'Book-Rating': ['mean', 'std', 'count']
+        }).round(2)
+        
+        user_stats.columns = ['avg_rating', 'rating_std', 'num_ratings']
+        user_stats = user_stats.reset_index()
+        
+        print("User Rating Patterns:")
+        print(f"Overall average rating: {final_rating['Book-Rating'].mean():.2f}")
+        print(f"Users who rate above 8 on average: {(user_stats['avg_rating'] > 8).sum()}")
+        print(f"Users who rate below 4 on average: {(user_stats['avg_rating'] < 4).sum()}")
+        
+        # Optional: Apply user bias correction
+        # (Subtract user's average rating from each rating)
+        global_avg = final_rating['Book-Rating'].mean()
+        user_avg = final_rating.groupby('User-ID')['Book-Rating'].mean()
+        
+        final_rating['bias_corrected_rating'] = (
+            final_rating['Book-Rating'] - 
+            final_rating['User-ID'].map(user_avg) + 
+            global_avg
+        )
+        
+        # Clip to valid range
+        final_rating['bias_corrected_rating'] = final_rating['bias_corrected_rating'].clip(1, 10)
+        
+        return final_rating, user_stats
+    
+    final_rating, user_statistics = analyze_user_bias(final_rating)
+    ```
+  </Accordion>
+
+  <Accordion title="Temporal Analysis">
+    ```python path=null start=null
+    # Analyze temporal patterns in the data
+    def temporal_analysis(books, final_rating):
+        """Analyze rating patterns over time"""
+        
+        # Merge with publication years
+        temporal_data = final_rating.merge(
+            books[['ISBN', 'Year-Of-Publication']], 
+            on='ISBN', 
+            how='left'
+        )
+        
+        # Remove invalid years
+        temporal_data = temporal_data[
+            temporal_data['Year-Of-Publication'].between(1950, 2020)
+        ]
+        
+        # Analyze rating trends by decade
+        temporal_data['decade'] = (temporal_data['Year-Of-Publication'] // 10) * 10
+        decade_stats = temporal_data.groupby('decade').agg({
+            'Book-Rating': ['mean', 'count'],
+            'ISBN': 'nunique'
+        }).round(2)
+        
+        decade_stats.columns = ['avg_rating', 'total_ratings', 'unique_books']
+        
+        print("Rating Trends by Publication Decade:")
+        print(decade_stats)
+        
+        # Books get better ratings as they age (survivorship bias)
+        # Newer books have more ratings (recency bias)
+        
+        return decade_stats
+    
+    decade_trends = temporal_analysis(books, final_rating)
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Data Quality Metrics
+
+### Statistical Summary
+
+```python path=null start=null
+def generate_data_summary(book_pivot, final_rating, books, users):
+    """Generate comprehensive data quality report"""
+    
+    summary = {
+        'Dataset Overview': {
+            'Total Books': f"{len(books):,}",
+            'Total Users': f"{len(users):,}",  
+            'Total Ratings': f"{len(final_rating):,}",
+            'Processed Books': f"{book_pivot.shape[0]:,}",
+            'Active Users': f"{book_pivot.shape[1]:,}"
+        },
+        
+        'Data Quality': {
+            'Matrix Sparsity': f"{(1 - (book_pivot != 0).sum().sum() / book_pivot.size) * 100:.2f}%",
+            'Avg Ratings per Book': f"{(book_pivot > 0).sum(axis=1).mean():.1f}",
+            'Avg Ratings per User': f"{(book_pivot > 0).sum(axis=0).mean():.1f}",
+            'Rating Range': f"{book_pivot.min().min():.0f} - {book_pivot.max().max():.0f}",
+            'Mean Rating': f"{final_rating['Book-Rating'].mean():.2f}"
+        },
+        
+        'Coverage': {
+            'Books with 50+ ratings': f"{((book_pivot > 0).sum(axis=1) >= 50).sum():,}",
+            'Users with 200+ ratings': f"{((book_pivot > 0).sum(axis=0) >= 200).sum():,}",
+            'Most rated book': f"{(book_pivot > 0).sum(axis=1).max():,} ratings",
+            'Most active user': f"{(book_pivot > 0).sum(axis=0).max():,} ratings"
+        }
+    }
+    
+    # Print formatted summary
+    for category, metrics in summary.items():
+        print(f"\n{category}:")
+        for metric, value in metrics.items():
+            print(f"  {metric}: {value}")
+    
+    return summary
+
+# Generate final summary
+data_summary = generate_data_summary(book_pivot, final_rating, books, users)
+```
+
+## Performance Considerations
+
+### Memory Optimization
+
+<Tabs>
+  <Tab title="Data Type Optimization">
+    ```python path=null start=null
+    # Optimize memory usage for large datasets
+    def optimize_memory_usage(final_rating, book_pivot):
+        """Reduce memory footprint of processed data"""
+        
+        # Use efficient data types
+        final_rating['User-ID'] = final_rating['User-ID'].astype('int32')
+        final_rating['Book-Rating'] = final_rating['Book-Rating'].astype('int8')
+        final_rating['Year-Of-Publication'] = final_rating['Year-Of-Publication'].astype('Int16')  # Nullable int
+        
+        # Convert to categorical for repeated strings
+        final_rating['Book-Author'] = final_rating['Book-Author'].astype('category')
+        final_rating['Publisher'] = final_rating['Publisher'].astype('category')
+        
+        # Use float32 for the pivot table (50% memory reduction)
+        book_pivot = book_pivot.astype('float32')
+        
+        # Memory usage comparison
+        print("Memory Usage Optimization:")
+        print(f"Final rating DataFrame: {final_rating.memory_usage(deep=True).sum() / 1024**2:.1f} MB")
+        print(f"Book pivot matrix: {book_pivot.memory_usage(deep=True).sum() / 1024**2:.1f} MB")
+        
+        return final_rating, book_pivot
+    
+    final_rating, book_pivot = optimize_memory_usage(final_rating, book_pivot)
+    ```
+  </Tab>
+
+  <Tab title="Sparse Matrix Conversion">
+    ```python path=null start=null
+    from scipy.sparse import csr_matrix
+    
+    # Convert to sparse matrix for very large datasets
+    def convert_to_sparse(book_pivot):
+        """Convert dense matrix to sparse format"""
+        
+        # Convert to compressed sparse row format
+        book_pivot_sparse = csr_matrix(book_pivot.values)
+        
+        # Memory comparison
+        dense_size = book_pivot.memory_usage(deep=True).sum() / 1024**2
+        sparse_size = (book_pivot_sparse.data.nbytes + 
+                      book_pivot_sparse.indices.nbytes + 
+                      book_pivot_sparse.indptr.nbytes) / 1024**2
+        
+        print(f"Dense matrix: {dense_size:.1f} MB")
+        print(f"Sparse matrix: {sparse_size:.1f} MB")
+        print(f"Memory reduction: {(1 - sparse_size/dense_size) * 100:.1f}%")
+        
+        return book_pivot_sparse
+    
+    # For very large datasets, use sparse representation
+    if book_pivot.shape[0] * book_pivot.shape[1] > 10_000_000:
+        book_pivot_sparse = convert_to_sparse(book_pivot)
+        print("Using sparse matrix representation for large dataset")
+    ```
+  </Tab>
+</Tabs>
+
+## Data Export and Serialization
+
+```python path=null start=null
+import pickle
+import os
+
+def save_processed_data(final_rating, book_pivot, book_names, output_dir='artifacts/'):
+    """Save all processed data artifacts"""
+    
+    os.makedirs(output_dir, exist_ok=True)
+    
+    # Save final rating data
+    with open(f'{output_dir}final_rating.pkl', 'wb') as f:
+        pickle.dump(final_rating, f)
+    
+    # Save pivot matrix
+    with open(f'{output_dir}book_pivot.pkl', 'wb') as f:
+        pickle.dump(book_pivot, f)
+    
+    # Save book names for UI
+    with open(f'{output_dir}book_names.pkl', 'wb') as f:
+        pickle.dump(book_names, f)
+    
+    # Save metadata
+    metadata = {
+        'processing_date': pd.Timestamp.now(),
+        'n_books': book_pivot.shape[0],
+        'n_users': book_pivot.shape[1],
+        'n_ratings': len(final_rating),
+        'sparsity': (1 - (book_pivot != 0).sum().sum() / book_pivot.size) * 100
+    }
+    
+    with open(f'{output_dir}metadata.pkl', 'wb') as f:
+        pickle.dump(metadata, f)
+    
+    print(f"Saved processed data to {output_dir}")
+    
+    # File size summary
+    for filename in os.listdir(output_dir):
+        if filename.endswith('.pkl'):
+            size_mb = os.path.getsize(f'{output_dir}{filename}') / 1024**2
+            print(f"  {filename}: {size_mb:.1f} MB")
+
+# Export processed data
+book_names = list(book_pivot.index)
+save_processed_data(final_rating, book_pivot, book_names)
+```
+
+The data processing pipeline ensures high-quality, consistent data that enables accurate collaborative filtering recommendations while maintaining computational efficiency.

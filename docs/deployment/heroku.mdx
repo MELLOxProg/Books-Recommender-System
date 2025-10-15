@@ -1,0 +1,556 @@
+---
+title: 'Heroku Deployment'
+description: 'Deploy your Book Recommender System to Heroku for scalable hosting'
+---
+
+## Heroku Deployment Guide
+
+Deploy your Book Recommender System to **Heroku** for scalable cloud hosting with custom domain support and easy scaling options.
+
+<img
+  src="/frontend1.png"
+  alt="Book Recommender System deployed and running with recommendations"
+/>
+
+## Prerequisites
+
+<AccordionGroup>
+  <Accordion title="Required Accounts & Tools">
+    - [Heroku account](https://signup.heroku.com/) (free tier available)
+    - [Heroku CLI](https://devcenter.heroku.com/articles/heroku-cli) installed
+    - Git repository with your Book Recommender System
+    - GitHub account (optional, for automatic deployments)
+  </Accordion>
+
+  <Accordion title="Project Requirements">
+    - `Procfile` specifying how to run your app
+    - `requirements.txt` with all dependencies
+    - Streamlit app configured for production
+    - Model artifacts under 500MB (Heroku slug size limit)
+  </Accordion>
+</AccordionGroup>
+
+## Deployment Methods
+
+### Method 1: Heroku CLI Deployment
+
+<Steps>
+  <Step title="Install Heroku CLI">
+    Download and install the Heroku CLI from [devcenter.heroku.com/articles/heroku-cli](https://devcenter.heroku.com/articles/heroku-cli)
+    
+    Verify installation:
+    ```bash
+    heroku --version
+    # Should output: heroku/7.x.x
+    ```
+  </Step>
+
+  <Step title="Login to Heroku">
+    ```bash
+    heroku login
+    # Opens browser for authentication
+    ```
+  </Step>
+
+  <Step title="Create Heroku Application">
+    ```bash
+    # Navigate to your project directory
+    cd Books-Recommender-System
+    
+    # Create new Heroku app
+    heroku create your-book-recommender-app
+    
+    # Or with specific region
+    heroku create your-book-recommender-app --region eu
+    ```
+  </Step>
+
+  <Step title="Configure Environment Variables">
+    ```bash
+    # Set environment variables if needed
+    heroku config:set DEBUG=False
+    heroku config:set STREAMLIT_SERVER_PORT=8501
+    
+    # View current config
+    heroku config
+    ```
+  </Step>
+
+  <Step title="Deploy to Heroku">
+    ```bash
+    # Add Heroku remote
+    git remote add heroku https://git.heroku.com/your-book-recommender-app.git
+    
+    # Deploy
+    git push heroku main
+    
+    # Open deployed app
+    heroku open
+    ```
+  </Step>
+</Steps>
+
+### Method 2: GitHub Integration
+
+<Steps>
+  <Step title="Connect to GitHub">
+    1. Go to your Heroku Dashboard
+    2. Select your app
+    3. Navigate to "Deploy" tab
+    4. Choose "GitHub" as deployment method
+    5. Connect your GitHub account
+    6. Search for "Books-Recommender-System" repository
+    7. Click "Connect"
+  </Step>
+
+  <Step title="Enable Automatic Deployments">
+    1. Scroll to "Automatic deploys" section
+    2. Select the `main` branch
+    3. Check "Wait for CI to pass before deploy" (optional)
+    4. Click "Enable Automatic Deploys"
+  </Step>
+
+  <Step title="Manual Deploy">
+    If you prefer manual control:
+    1. Scroll to "Manual deploy" section
+    2. Select `main` branch
+    3. Click "Deploy Branch"
+  </Step>
+</Steps>
+
+## Configuration Files
+
+### Procfile
+
+Your existing `Procfile` should work, but ensure it's optimized:
+
+```bash
+web: sh setup.sh && streamlit run app.py --server.port=$PORT --server.address=0.0.0.0
+```
+
+### setup.sh
+
+Update your `setup.sh` for Heroku compatibility:
+
+```bash
+mkdir -p ~/.streamlit/
+
+echo "\
+[general]\n\
+email = \"your-email@example.com\"\n\
+" > ~/.streamlit/credentials.toml
+
+echo "\
+[server]\n\
+headless = true\n\
+enableCORS=false\n\
+port = $PORT\n\
+" > ~/.streamlit/config.toml
+```
+
+### requirements.txt
+
+Optimize for Heroku deployment:
+
+```txt
+streamlit==1.28.1
+numpy==1.24.3
+pandas==2.0.3
+scikit-learn==1.3.0
+```
+
+## Handling Large Files
+
+<Warning>
+  **Heroku Slug Size Limit**: Apps cannot exceed 500MB. Your model files and dataset might be too large.
+</Warning>
+
+### Solution 1: Git LFS
+
+Use Git Large File Storage for model artifacts:
+
+```bash
+# Install git-lfs
+git lfs install
+
+# Track large files
+git lfs track "artifacts/*.pkl"
+git lfs track "data/*.csv"
+
+# Add .gitattributes
+git add .gitattributes
+
+# Commit and push
+git commit -m "Add LFS tracking"
+git push heroku main
+```
+
+### Solution 2: Cloud Storage
+
+Store large files in cloud storage and download on startup:
+
+<Tabs>
+  <Tab title="AWS S3">
+    ```python path=null start=null
+    import boto3
+    import os
+    import streamlit as st
+    
+    @st.cache_resource
+    def download_models_from_s3():
+        """Download model artifacts from S3"""
+        if not os.path.exists('artifacts/model.pkl'):
+            st.info("Downloading model files from cloud storage...")
+            
+            s3 = boto3.client(
+                's3',
+                aws_access_key_id=os.getenv('AWS_ACCESS_KEY_ID'),
+                aws_secret_access_key=os.getenv('AWS_SECRET_ACCESS_KEY')
+            )
+            
+            files_to_download = [
+                'model.pkl',
+                'book_names.pkl', 
+                'book_pivot.pkl',
+                'final_rating.pkl'
+            ]
+            
+            os.makedirs('artifacts', exist_ok=True)
+            
+            for filename in files_to_download:
+                s3.download_file(
+                    'your-bucket-name',
+                    f'models/{filename}',
+                    f'artifacts/{filename}'
+                )
+            
+            st.success("Models downloaded successfully!")
+    
+    # Set environment variables in Heroku
+    # heroku config:set AWS_ACCESS_KEY_ID=your_key
+    # heroku config:set AWS_SECRET_ACCESS_KEY=your_secret
+    
+    # Call at app startup
+    download_models_from_s3()
+    ```
+  </Tab>
+
+  <Tab title="Google Drive">
+    ```python path=null start=null
+    import gdown
+    import os
+    import streamlit as st
+    
+    @st.cache_resource
+    def download_models_from_gdrive():
+        """Download model artifacts from Google Drive"""
+        
+        model_urls = {
+            'model.pkl': 'https://drive.google.com/uc?id=YOUR_FILE_ID_1',
+            'book_names.pkl': 'https://drive.google.com/uc?id=YOUR_FILE_ID_2',
+            'book_pivot.pkl': 'https://drive.google.com/uc?id=YOUR_FILE_ID_3',
+            'final_rating.pkl': 'https://drive.google.com/uc?id=YOUR_FILE_ID_4'
+        }
+        
+        os.makedirs('artifacts', exist_ok=True)
+        
+        for filename, url in model_urls.items():
+            filepath = f'artifacts/{filename}'
+            if not os.path.exists(filepath):
+                st.info(f"Downloading {filename}...")
+                gdown.download(url, filepath, quiet=False)
+        
+        st.success("All models downloaded!")
+    
+    # Add gdown to requirements.txt: gdown>=4.5.1
+    download_models_from_gdrive()
+    ```
+  </Tab>
+</Tabs>
+
+### Solution 3: Model Compression
+
+Reduce model size using compression:
+
+```python path=null start=null
+import pickle
+import joblib
+from sklearn.neighbors import NearestNeighbors
+
+# Use joblib for better compression
+def save_compressed_model(model, filepath):
+    """Save model with compression"""
+    joblib.dump(model, filepath, compress=3)
+
+def load_compressed_model(filepath):
+    """Load compressed model"""
+    return joblib.load(filepath)
+
+# Update your model saving process
+# joblib.dump(model, 'artifacts/model.pkl', compress=3)
+```
+
+## Performance Optimization
+
+### Memory Management
+
+<AccordionGroup>
+  <Accordion title="Optimize Data Types">
+    ```python path=null start=null
+    # Reduce memory usage of pandas DataFrames
+    def optimize_dataframe(df):
+        """Optimize DataFrame memory usage"""
+        
+        for col in df.columns:
+            if df[col].dtype == 'object':
+                # Convert to category if low cardinality
+                if df[col].nunique() / len(df) < 0.5:
+                    df[col] = df[col].astype('category')
+            elif df[col].dtype == 'float64':
+                df[col] = df[col].astype('float32')
+            elif df[col].dtype == 'int64':
+                df[col] = pd.to_numeric(df[col], downcast='integer')
+        
+        return df
+    
+    # Apply to your DataFrames
+    final_rating = optimize_dataframe(final_rating)
+    book_pivot = book_pivot.astype('float32')
+    ```
+  </Accordion>
+
+  <Accordion title="Lazy Loading">
+    ```python path=null start=null
+    import streamlit as st
+    
+    @st.cache_resource
+    def load_model_lazy():
+        """Load model only when needed"""
+        return pickle.load(open('artifacts/model.pkl', 'rb'))
+    
+    @st.cache_data
+    def load_book_names():
+        """Load book names with caching"""
+        return pickle.load(open('artifacts/book_names.pkl', 'rb'))
+    
+    # Load components separately
+    def get_model():
+        if 'model' not in st.session_state:
+            st.session_state.model = load_model_lazy()
+        return st.session_state.model
+    ```
+  </Accordion>
+</AccordionGroup>
+
+### Application Optimization
+
+<Tabs>
+  <Tab title="Streamlit Configuration">
+    ```toml
+    # .streamlit/config.toml
+    [server]
+    headless = true
+    port = 8501
+    enableCORS = false
+    enableWebsocketCompression = true
+    
+    [global]
+    dataFrameSerialization = "legacy"
+    
+    [theme]
+    primaryColor = "#0D9373"
+    backgroundColor = "#FFFFFF"
+    secondaryBackgroundColor = "#F0F2F6"
+    ```
+  </Tab>
+
+  <Tab title="Production Settings">
+    ```python path=null start=null
+    import os
+    import streamlit as st
+    
+    # Production configurations
+    PRODUCTION = os.getenv('HEROKU_APP_NAME') is not None
+    DEBUG = os.getenv('DEBUG', 'False').lower() == 'true'
+    
+    if PRODUCTION:
+        # Production optimizations
+        st.set_page_config(
+            page_title="Book Recommender",
+            page_icon="📚",
+            layout="wide",
+            initial_sidebar_state="collapsed"
+        )
+        
+        # Disable debug features
+        if not DEBUG:
+            st.markdown("""
+            <style>
+                #MainMenu {visibility: hidden;}
+                footer {visibility: hidden;}
+                .stDeployButton {visibility: hidden;}
+            </style>
+            """, unsafe_allow_html=True)
+    ```
+  </Tab>
+</Tabs>
+
+## Monitoring and Scaling
+
+### Heroku Metrics
+
+Monitor your application performance:
+
+```bash
+# View app logs
+heroku logs --tail
+
+# Monitor metrics
+heroku addons:create heroku-metrics:standard
+
+# Scale dynos
+heroku ps:scale web=2  # Scale to 2 dynos
+
+# Check dyno usage
+heroku ps
+```
+
+### Custom Health Checks
+
+Add health monitoring to your app:
+
+```python path=null start=null
+import streamlit as st
+import psutil
+import os
+
+def app_health_check():
+    """Monitor application health"""
+    health_data = {
+        'status': 'healthy',
+        'timestamp': pd.Timestamp.now().isoformat(),
+        'memory_usage_mb': psutil.Process().memory_info().rss / 1024 / 1024,
+        'cpu_percent': psutil.cpu_percent(),
+        'model_loaded': 'model' in st.session_state,
+        'books_available': len(book_names) if 'book_names' in globals() else 0
+    }
+    
+    return health_data
+
+# Add to sidebar in debug mode
+if DEBUG:
+    with st.sidebar:
+        if st.button("Health Check"):
+            health = app_health_check()
+            st.json(health)
+```
+
+## Troubleshooting
+
+### Common Issues
+
+<AccordionGroup>
+  <Accordion title="Build Failures">
+    **Issue**: `failed to push some refs to heroku`
+    
+    **Solutions**:
+    ```bash
+    # Check git status
+    git status
+    
+    # Commit all changes
+    git add .
+    git commit -m "Prepare for Heroku deployment"
+    
+    # Force push if needed
+    git push heroku main --force
+    
+    # Check build logs
+    heroku logs --tail --dyno web
+    ```
+  </Accordion>
+
+  <Accordion title="Memory Errors">
+    **Issue**: `R14 - Memory quota exceeded`
+    
+    **Solutions**:
+    ```bash
+    # Upgrade to higher memory dyno
+    heroku dyno:type performance-m
+    
+    # Monitor memory usage
+    heroku addons:create librato
+    
+    # Optimize code for lower memory usage
+    # - Use data type optimization
+    # - Implement lazy loading
+    # - Clear unused variables
+    ```
+  </Accordion>
+
+  <Accordion title="Slug Size Exceeded">
+    **Issue**: `Compiled slug size: 500.1M is too large`
+    
+    **Solutions**:
+    ```bash
+    # Use .slugignore to exclude files
+    echo "data/" > .slugignore
+    echo "*.ipynb" >> .slugignore
+    echo "demo/" >> .slugignore
+    
+    # Implement cloud storage solution
+    # Use model compression
+    # Remove unnecessary files
+    ```
+  </Accordion>
+</AccordionGroup>
+
+### Performance Monitoring
+
+Set up application performance monitoring:
+
+```python path=null start=null
+import time
+import logging
+
+# Configure logging for production
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
+def log_performance(func):
+    """Decorator to log function performance"""
+    def wrapper(*args, **kwargs):
+        start_time = time.time()
+        result = func(*args, **kwargs)
+        end_time = time.time()
+        
+        logger.info(f"{func.__name__} executed in {end_time - start_time:.2f}s")
+        return result
+    return wrapper
+
+# Apply to key functions
+@log_performance
+def recommend_book(book_name):
+    # Your recommendation logic
+    pass
+```
+
+## Custom Domain
+
+Set up a custom domain for your Heroku app:
+
+```bash
+# Add custom domain
+heroku domains:add books.yourdomain.com
+
+# Configure DNS with your domain provider:
+# CNAME record: books.yourdomain.com -> your-app-name.herokuapp.com
+
+# Add SSL certificate (automatic with paid dynos)
+heroku certs:auto:enable
+```
+
+Your Book Recommender System is now deployed on Heroku with production-ready configuration and monitoring!
