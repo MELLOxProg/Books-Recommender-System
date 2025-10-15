@@ -1,0 +1,475 @@
+---
+title: 'Collaborative Filtering Deep Dive'
+description: 'Technical exploration of collaborative filtering algorithms and implementation details'
+---
+
+## What is Collaborative Filtering?
+
+**Collaborative Filtering (CF)** is a method of making automatic predictions about interests by collecting preferences from many users. The underlying assumption is that if users A and B have similar preferences in the past, they will have similar preferences in the future.
+
+<img src="/frontend1.png" alt="Collaborative Filtering Results" />
+
+## 🔍 Types of Collaborative Filtering
+
+<CardGroup cols={2}>
+  <Card title="👥 User-Based CF" icon="users">
+    **"Users like you also liked..."**
+    
+    Finds users with similar preferences and recommends items they liked
+  </Card>
+  <Card title="📚 Item-Based CF" icon="book">
+    **"Items similar to what you liked..."**
+    
+    Finds items similar to those the user has liked in the past
+  </Card>
+</CardGroup>
+
+Our Book Recommender System primarily uses **Item-Based Collaborative Filtering**, which tends to be more stable and interpretable for book recommendations.
+
+## 🧮 Mathematical Foundation
+
+### User-Item Matrix
+
+The foundation of collaborative filtering is the **user-item interaction matrix**:
+
+```python path=null start=null
+# Simplified representation
+user_item_matrix = pd.DataFrame({
+    'User_1': [5, 0, 4, 0, 3],
+    'User_2': [4, 0, 0, 2, 4], 
+    'User_3': [0, 5, 0, 3, 0],
+    'User_4': [0, 4, 0, 4, 0],
+    'User_5': [2, 0, 1, 0, 5]
+}, index=['Book_A', 'Book_B', 'Book_C', 'Book_D', 'Book_E'])
+```
+
+Where:
+- **Rows**: Items (books)
+- **Columns**: Users  
+- **Values**: Ratings (1-10 scale, 0 = no rating)
+
+### Cosine Similarity
+
+We use **cosine similarity** to measure item relationships:
+
+<Note>
+**Cosine Similarity Formula:**
+
+For items i and j with rating vectors **v_i** and **v_j**:
+
+```
+similarity(i,j) = cos(θ) = (v_i · v_j) / (||v_i|| × ||v_j||)
+```
+
+Where:
+- **v_i · v_j** = dot product of vectors
+- **||v_i||** = magnitude (L2 norm) of vector v_i
+- **θ** = angle between vectors
+</Note>
+
+### Why Cosine Similarity?
+
+<AccordionGroup>
+  <Accordion title="📊 Handles Sparse Data Well">
+    Most user-item matrices are sparse (many missing ratings). Cosine similarity works effectively with sparse vectors by ignoring zero values.
+  </Accordion>
+
+  <Accordion title="🎯 Pattern-Focused">
+    Measures the **angle** between rating vectors rather than absolute values, focusing on rating patterns rather than magnitude.
+  </Accordion>
+
+  <Accordion title="📏 Normalized Scale">
+    Results range from -1 (opposite) to 1 (identical), providing intuitive similarity scores.
+  </Accordion>
+
+  <Accordion title="⚡ Computationally Efficient">
+    Optimized implementations can handle large sparse matrices efficiently.
+  </Accordion>
+</AccordionGroup>
+
+## 🛠️ Implementation Details
+
+### Data Preprocessing Pipeline
+
+<Steps>
+  <Step title="Data Loading">
+    ```python path=null start=null
+    # Load the three main datasets
+    books = pd.read_csv('data/BX-Books.csv', sep=';', encoding='latin-1')
+    users = pd.read_csv('data/BX-Users.csv', sep=';', encoding='latin-1') 
+    ratings = pd.read_csv('data/BX-Book-Ratings.csv', sep=';', encoding='latin-1')
+    ```
+  </Step>
+
+  <Step title="Quality Filtering">
+    ```python path=null start=null
+    # Filter books with sufficient ratings (50+)
+    book_rating_count = ratings.groupby('ISBN').count()['Book-Rating']
+    popular_books = book_rating_count[book_rating_count >= 50].index
+
+    # Filter active users (200+ ratings)
+    user_rating_count = ratings.groupby('User-ID').count()['Book-Rating']  
+    active_users = user_rating_count[user_rating_count >= 200].index
+
+    # Apply filters
+    filtered_ratings = ratings[
+        (ratings['ISBN'].isin(popular_books)) & 
+        (ratings['User-ID'].isin(active_users))
+    ]
+    ```
+  </Step>
+
+  <Step title="Data Integration">
+    ```python path=null start=null
+    # Merge with book metadata
+    final_rating = filtered_ratings.merge(
+        books[['ISBN', 'Book-Title', 'Book-Author', 'Image-URL-L']], 
+        on='ISBN', 
+        how='left'
+    )
+    
+    # Clean and standardize
+    final_rating = final_rating.drop_duplicates(['User-ID', 'Book-Title'])
+    final_rating.reset_index(drop=True, inplace=True)
+    ```
+  </Step>
+
+  <Step title="Matrix Creation">
+    ```python path=null start=null
+    # Create pivot table (user-item matrix)
+    book_pivot = final_rating.pivot_table(
+        index='Book-Title',
+        columns='User-ID', 
+        values='Book-Rating'
+    ).fillna(0)
+    
+    # Convert to sparse format for memory efficiency
+    from scipy.sparse import csr_matrix
+    book_sparse = csr_matrix(book_pivot.values)
+    ```
+  </Step>
+</Steps>
+
+### k-Nearest Neighbors (k-NN) Algorithm
+
+Our system uses **k-NN with cosine similarity** for finding similar books:
+
+```python path=null start=null
+from sklearn.neighbors import NearestNeighbors
+
+# Initialize k-NN model
+model = NearestNeighbors(
+    algorithm='brute',    # Exact search for accuracy
+    metric='cosine',      # Cosine similarity  
+    n_jobs=-1            # Use all CPU cores
+)
+
+# Fit the model
+model.fit(book_pivot)
+```
+
+#### Algorithm Parameters:
+
+<AccordionGroup>
+  <Accordion title="algorithm='brute'">
+    **Brute Force Search**
+    - Compares every book with every other book
+    - Guarantees finding exact nearest neighbors
+    - Slower but more accurate than approximate methods
+    - Suitable for our dataset size (~11,000 books)
+  </Accordion>
+
+  <Accordion title="metric='cosine'">
+    **Cosine Distance Metric**
+    - Uses cosine similarity for distance calculation
+    - Optimal for sparse, high-dimensional data
+    - Focuses on rating patterns rather than absolute values
+    - Range: 0 (identical) to 1 (completely different)
+  </Accordion>
+
+  <Accordion title="n_neighbors=6">
+    **Number of Neighbors**
+    - Finds 6 most similar books (including the query book itself)
+    - Returns 5 recommendations (excluding the input book)
+    - Balances diversity and similarity in results
+  </Accordion>
+</AccordionGroup>
+
+### Recommendation Generation
+
+When a user selects a book, the system:
+
+<Steps>
+  <Step title="Book Lookup">
+    ```python path=/C/Users/Nirav/Desktop/rs project/Books-Recommender-System/app.py start=39
+    book_id = np.where(book_pivot.index == book_name)[0][0]
+    ```
+    
+    Finds the book's position in the pivot table matrix
+  </Step>
+
+  <Step title="Similarity Search">
+    ```python path=/C/Users/Nirav/Desktop/rs project/Books-Recommender-System/app.py start=40
+    distance, suggestion = model.kneighbors(
+        book_pivot.iloc[book_id,:].values.reshape(1,-1), 
+        n_neighbors=6
+    )
+    ```
+    
+    Uses k-NN to find 6 most similar books based on user rating patterns
+  </Step>
+
+  <Step title="Result Processing">
+    ```python path=null start=null
+    # Extract book indices (excluding the input book)
+    similar_books = suggestion[0][1:]  # Skip first result (input book)
+    
+    # Get book names and metadata
+    recommended_books = [book_pivot.index[i] for i in similar_books]
+    ```
+    
+    Converts indices back to book titles and retrieves metadata
+  </Step>
+</Steps>
+
+## 📊 Algorithm Performance Analysis
+
+### Similarity Score Interpretation
+
+Cosine similarity scores in our system typically range:
+
+<CardGroup cols={3}>
+  <Card title="0.8 - 1.0" icon="star">
+    **Highly Similar**
+    
+    Books with very similar rating patterns, often same genre/author
+  </Card>
+  <Card title="0.6 - 0.8" icon="thumbs-up">
+    **Moderately Similar**
+    
+    Related books that appeal to similar audiences
+  </Card>
+  <Card title="0.4 - 0.6" icon="question">
+    **Somewhat Similar**
+    
+    May share some common appeal but differ in genre/style
+  </Card>
+</CardGroup>
+
+### Dataset Statistics After Filtering
+
+<AccordionGroup>
+  <Accordion title="📚 Book Statistics">
+    **Original Dataset**: 271,379 books
+    **After Filtering**: ~11,000 books (50+ ratings each)
+    **Coverage**: Popular and well-rated books ensuring quality recommendations
+    
+    ```python path=null start=null
+    # Distribution of ratings per book
+    book_rating_counts = filtered_ratings.groupby('ISBN').size()
+    print(f"Mean ratings per book: {book_rating_counts.mean():.1f}")
+    print(f"Median ratings per book: {book_rating_counts.median():.1f}")
+    ```
+  </Accordion>
+
+  <Accordion title="👥 User Statistics">
+    **Original Dataset**: 278,858 users  
+    **After Filtering**: ~900 users (200+ ratings each)
+    **Quality**: Highly engaged users with meaningful preference patterns
+    
+    ```python path=null start=null
+    # Distribution of ratings per user  
+    user_rating_counts = filtered_ratings.groupby('User-ID').size()
+    print(f"Mean ratings per user: {user_rating_counts.mean():.1f}")
+    print(f"Median ratings per user: {user_rating_counts.median():.1f}")
+    ```
+  </Accordion>
+
+  <Accordion title="⭐ Rating Statistics">
+    **Original Dataset**: 1,149,780 ratings
+    **After Filtering**: ~433,000 ratings
+    **Density**: Higher matrix density improves recommendation quality
+    
+    ```python path=null start=null
+    # Matrix sparsity analysis
+    total_cells = book_pivot.shape[0] * book_pivot.shape[1]
+    non_zero_cells = (book_pivot != 0).sum().sum()
+    density = non_zero_cells / total_cells
+    print(f"Matrix density: {density:.4f} ({density*100:.2f}%)")
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## 🎯 Advantages & Limitations
+
+### Strengths of Our Approach
+
+<CardGroup cols={2}>
+  <Card title="🎪 Serendipity Factor" icon="sparkles">
+    Discovers unexpected books that users with similar tastes have enjoyed
+  </Card>
+  <Card title="📈 Proven Effectiveness" icon="chart-line">
+    Based on actual user behavior rather than content analysis
+  </Card>
+  <Card title="🔄 Self-Improving" icon="refresh">
+    Quality improves as more users interact with the system
+  </Card>
+  <Card title="⚡ Fast Inference" icon="bolt">
+    Pre-computed similarity matrix enables real-time recommendations
+  </Card>
+</CardGroup>
+
+### Known Limitations
+
+<Warning>
+**Cold Start Problem**: New books or users without rating history receive poor recommendations.
+
+**Popularity Bias**: Popular books tend to be recommended more frequently than niche titles.
+
+**Data Sparsity**: Most user-book pairs have no ratings, limiting recommendation diversity.
+
+**Scalability**: Matrix size grows quadratically with users and items.
+</Warning>
+
+### Mitigation Strategies
+
+<AccordionGroup>
+  <Accordion title="Cold Start Solutions">
+    **For New Books:**
+    - Require minimum rating threshold before inclusion
+    - Use content-based features as backup
+    - Implement popularity-based recommendations for new items
+    
+    **For New Users:**
+    - Ask for initial preferences during onboarding
+    - Recommend popular/trending books initially
+    - Gradually transition to collaborative filtering as data accumulates
+  </Accordion>
+
+  <Accordion title="Diversity Enhancement">
+    **Techniques to improve recommendation diversity:**
+    - Post-filtering to reduce similar author recommendations
+    - Genre balancing in final recommendation list
+    - Temporal decay to emphasize recent preferences
+    - Exploration vs. exploitation trade-offs
+  </Accordion>
+
+  <Accordion title="Scalability Improvements">
+    **Methods for handling larger datasets:**
+    - Matrix factorization techniques (SVD, NMF)
+    - Approximate nearest neighbor algorithms (LSH, Annoy)
+    - Distributed computing with Spark or Dask
+    - Online learning algorithms for real-time updates
+  </Accordion>
+</AccordionGroup>
+
+## 🔬 Advanced Concepts
+
+### Matrix Factorization Alternative
+
+While our system uses k-NN, **matrix factorization** is another powerful collaborative filtering approach:
+
+```python path=null start=null
+from sklearn.decomposition import TruncatedSVD
+
+# Alternative approach: Matrix Factorization
+svd = TruncatedSVD(n_components=50, random_state=42)
+user_factors = svd.fit_transform(book_pivot.T)  # User embeddings
+book_factors = svd.components_.T                # Book embeddings
+
+# Calculate similarity using learned embeddings  
+from sklearn.metrics.pairwise import cosine_similarity
+book_similarity = cosine_similarity(book_factors)
+```
+
+### Hybrid Approaches
+
+Real-world systems often combine multiple techniques:
+
+<CardGroup cols={2}>
+  <Card title="📊 Weighted Hybrid" icon="balance-scale">
+    Combine collaborative filtering with content-based filtering using weighted averages
+  </Card>
+  <Card title="🔄 Switching Hybrid" icon="exchange">
+    Use different algorithms based on data availability and user context
+  </Card>
+  <Card title="🎯 Mixed Hybrid" icon="target">
+    Present recommendations from multiple algorithms simultaneously
+  </Card>
+  <Card title="🧩 Feature Combination" icon="puzzle">
+    Use collaborative and content features in a single machine learning model
+  </Card>
+</CardGroup>
+
+## 🔧 Implementation Tips
+
+### Performance Optimization
+
+<AccordionGroup>
+  <Accordion title="⚡ Memory Optimization">
+    ```python path=null start=null
+    # Use sparse matrices for large datasets
+    from scipy.sparse import csr_matrix
+    sparse_matrix = csr_matrix(book_pivot.values)
+    
+    # Reduce precision for memory savings
+    book_pivot = book_pivot.astype(np.float32)
+    
+    # Delete unused variables
+    del ratings, books, users  # Free memory
+    ```
+  </Accordion>
+
+  <Accordion title="🚀 Speed Optimization">
+    ```python path=null start=null
+    # Pre-compute similarities for popular books
+    top_books = book_pivot.sum(axis=1).nlargest(1000)
+    precomputed_similarities = {}
+    
+    for book in top_books.index:
+        distances, indices = model.kneighbors([book_pivot.loc[book]], n_neighbors=6)
+        precomputed_similarities[book] = indices[0]
+    ```
+  </Accordion>
+
+  <Accordion title="📊 Quality Metrics">
+    ```python path=null start=null
+    # Evaluate recommendation quality
+    def calculate_coverage(recommendations, catalog_size):
+        unique_recommendations = set(recommendations)
+        return len(unique_recommendations) / catalog_size
+    
+    def calculate_diversity(recommendations, similarity_matrix):
+        avg_similarity = 0
+        count = 0
+        for i in range(len(recommendations)):
+            for j in range(i+1, len(recommendations)):
+                avg_similarity += similarity_matrix[recommendations[i], recommendations[j]]
+                count += 1
+        return 1 - (avg_similarity / count) if count > 0 else 0
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## 📚 Further Reading
+
+<CardGroup cols={2}>
+  <Card title="🔍 How It Works" icon="search" href="/how-it-works">
+    High-level overview of the recommendation process
+  </Card>
+  <Card title="📊 Data Processing" icon="chart-bar" href="/data-processing">
+    Detailed data preprocessing and cleaning steps
+  </Card>
+  <Card title="⚙️ ML Pipeline" icon="cog" href="/machine-learning-pipeline">
+    Complete model training and deployment pipeline
+  </Card>
+  <Card title="🏗️ Model Training" icon="wrench" href="/model-training">
+    Step-by-step model training and optimization guide
+  </Card>
+</CardGroup>
+
+---
+
+<Info>
+Collaborative filtering is both an art and a science. While the mathematics provide the foundation, the real magic happens in understanding user behavior patterns and translating them into meaningful book recommendations! 📖✨
+</Info>

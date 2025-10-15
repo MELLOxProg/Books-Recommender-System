@@ -1,0 +1,464 @@
+---
+title: 'Troubleshooting'
+description: 'Solutions to common issues and problems with the Book Recommender System'
+---
+
+## Common Issues and Solutions
+
+This guide helps you resolve common problems you might encounter while using or setting up the Book Recommender System.
+
+<img src="/frontend1.png" alt="Troubleshooting Guide" />
+
+## 🚨 Installation Problems
+
+<AccordionGroup>
+  <Accordion title="❌ ModuleNotFoundError: No module named 'streamlit'">
+    **Problem**: Required packages not installed
+    
+    **Solutions**:
+    ```bash path=null start=null
+    # Install requirements
+    pip install -r requirements.txt
+    
+    # Alternative: Install individually
+    pip install streamlit numpy pandas
+    
+    # For conda users
+    conda install streamlit numpy pandas
+    ```
+  </Accordion>
+
+  <Accordion title="❌ FileNotFoundError: artifacts/model.pkl">
+    **Problem**: Model files missing from artifacts directory
+    
+    **Solutions**:
+    1. **Check if files exist**:
+       ```bash path=null start=null
+       ls artifacts/
+       # Should show: model.pkl, book_names.pkl, book_pivot.pkl, final_rating.pkl
+       ```
+    
+    2. **Generate models**:
+       ```bash path=null start=null
+       jupyter notebook "Books Recommender.ipynb"
+       # Run all cells to create model files
+       ```
+    
+    3. **Verify file integrity**:
+       ```bash path=null start=null
+       python -c "import pickle; pickle.load(open('artifacts/model.pkl', 'rb')); print('✅ Model file valid')"
+       ```
+  </Accordion>
+
+  <Accordion title="❌ Permission Denied Errors">
+    **Problem**: Insufficient permissions during installation
+    
+    **Solutions**:
+    ```bash path=null start=null
+    # Use virtual environment (recommended)
+    python -m venv book-recommender
+    source book-recommender/bin/activate  # macOS/Linux
+    book-recommender\Scripts\activate     # Windows
+    
+    # Install in user space
+    pip install --user -r requirements.txt
+    
+    # For Windows: Run as administrator
+    # For macOS/Linux: Avoid sudo, use virtual environments
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## 🖥️ Application Issues
+
+<AccordionGroup>
+  <Accordion title="⚡ App Starts But No Interface">
+    **Problem**: Streamlit not opening in browser
+    
+    **Solutions**:
+    1. **Manual browser navigation**:
+       - Open browser manually
+       - Go to `http://localhost:8501`
+    
+    2. **Check port availability**:
+       ```bash path=null start=null
+       # Use different port if 8501 is busy
+       streamlit run app.py --server.port 8502
+       ```
+    
+    3. **Clear browser cache**:
+       - Clear browser cache and cookies
+       - Try incognito/private browsing mode
+    
+    4. **Network configuration**:
+       ```bash path=null start=null
+       # Allow external connections (for remote access)
+       streamlit run app.py --server.address 0.0.0.0
+       ```
+  </Accordion>
+
+  <Accordion title="🔄 Dropdown Menu Not Loading">
+    **Problem**: Book selection dropdown is empty or not responding
+    
+    **Solutions**:
+    1. **Check model files**:
+       ```bash path=null start=null
+       python -c "
+       import pickle
+       books = pickle.load(open('artifacts/book_names.pkl', 'rb'))
+       print(f'Available books: {len(books)}')
+       print('First few books:', books[:5])
+       "
+       ```
+    
+    2. **Memory issues**:
+       - Close other applications to free RAM
+       - Restart the Streamlit app
+       - Check available system memory
+    
+    3. **Browser compatibility**:
+       - Try a different browser (Chrome, Firefox, Safari)
+       - Disable browser extensions temporarily
+       - Enable JavaScript if disabled
+  </Accordion>
+
+  <Accordion title="❌ No Recommendations Generated">
+    **Problem**: Clicking "Show Recommendation" shows no results
+    
+    **Solutions**:
+    1. **Check selected book**:
+       - Ensure a book is selected from dropdown
+       - Try a different, more popular book
+    
+    2. **Model validation**:
+       ```bash path=null start=null
+       python -c "
+       import pickle
+       import numpy as np
+       
+       model = pickle.load(open('artifacts/model.pkl', 'rb'))
+       pivot = pickle.load(open('artifacts/book_pivot.pkl', 'rb'))
+       
+       # Test recommendation
+       book_name = pivot.index[0]  # First book
+       book_id = np.where(pivot.index == book_name)[0][0]
+       distances, suggestions = model.kneighbors(pivot.iloc[book_id,:].values.reshape(1,-1), n_neighbors=6)
+       print('✅ Model working correctly')
+       "
+       ```
+    
+    3. **Data integrity**:
+       - Regenerate model files if corrupted
+       - Check console for error messages
+       - Verify all pickle files are present
+  </Accordion>
+</AccordionGroup>
+
+## 🖼️ Display Problems
+
+<AccordionGroup>
+  <Accordion title="🖼️ Missing Book Covers">
+    **Problem**: Book titles show but images don't load
+    
+    **Solutions**:
+    1. **Network connectivity**:
+       - Check internet connection
+       - Verify firewall isn't blocking image requests
+       - Try refreshing the page
+    
+    2. **Image URL issues**:
+       ```bash path=null start=null
+       python -c "
+       import pickle
+       final_rating = pickle.load(open('artifacts/final_rating.pkl', 'rb'))
+       print('Sample image URLs:')
+       print(final_rating['image_url'].head())
+       print('URLs with valid format:', final_rating['image_url'].str.contains('http').sum())
+       "
+       ```
+    
+    3. **Browser settings**:
+       - Enable image loading in browser settings
+       - Disable ad blockers temporarily
+       - Check if images load directly in browser
+  </Accordion>
+
+  <Accordion title="📱 Mobile Display Issues">
+    **Problem**: Interface not responsive on mobile devices
+    
+    **Solutions**:
+    1. **Browser compatibility**:
+       - Use mobile-optimized browsers
+       - Update browser to latest version
+       - Clear mobile browser cache
+    
+    2. **Display settings**:
+       - Enable desktop site if needed
+       - Adjust zoom level
+       - Rotate device to landscape mode
+    
+    3. **Network optimization**:
+       - Use Wi-Fi instead of cellular data
+       - Allow time for images to load
+       - Refresh page if layout appears broken
+  </Accordion>
+</AccordionGroup>
+
+## ⚡ Performance Issues
+
+<AccordionGroup>
+  <Accordion title="🐌 Slow Loading Times">
+    **Problem**: App takes too long to start or respond
+    
+    **Solutions**:
+    1. **System resources**:
+       ```bash path=null start=null
+       # Check available memory
+       # Windows
+       Get-Process -Name python | Select-Object ProcessName, WorkingSet
+       
+       # macOS/Linux
+       ps aux | grep python
+       top -p $(pgrep python)
+       ```
+    
+    2. **Optimization**:
+       - Close unnecessary applications
+       - Ensure minimum 4GB RAM available
+       - Use SSD instead of HDD if possible
+    
+    3. **Model caching**:
+       ```python path=null start=null
+       # Add to app.py for faster subsequent loads
+       @st.cache_resource
+       def load_models():
+           model = pickle.load(open('artifacts/model.pkl', 'rb'))
+           book_names = pickle.load(open('artifacts/book_names.pkl', 'rb'))
+           return model, book_names
+       ```
+  </Accordion>
+
+  <Accordion title="💾 Memory Errors">
+    **Problem**: Out of memory errors or system freezing
+    
+    **Solutions**:
+    1. **System requirements**:
+       - Minimum 4GB RAM (8GB recommended)
+       - Close memory-intensive applications
+       - Restart system if necessary
+    
+    2. **Memory optimization**:
+       ```python path=null start=null
+       # Monitor memory usage
+       import psutil
+       process = psutil.Process()
+       memory_mb = process.memory_info().rss / 1024 / 1024
+       print(f"Memory usage: {memory_mb:.1f} MB")
+       ```
+    
+    3. **Model efficiency**:
+       - Use float32 instead of float64 in models
+       - Implement lazy loading for large datasets
+       - Consider using sparse matrices
+  </Accordion>
+</AccordionGroup>
+
+## 🔧 Development Issues
+
+<AccordionGroup>
+  <Accordion title="🐍 Python Environment Problems">
+    **Problem**: Package conflicts or version issues
+    
+    **Solutions**:
+    1. **Clean environment**:
+       ```bash path=null start=null
+       # Create fresh virtual environment
+       python -m venv fresh-env
+       source fresh-env/bin/activate  # or activate.bat on Windows
+       pip install -r requirements.txt
+       ```
+    
+    2. **Version checking**:
+       ```bash path=null start=null
+       python --version
+       pip list | grep streamlit
+       pip list | grep numpy
+       ```
+    
+    3. **Package conflicts**:
+       ```bash path=null start=null
+       pip check  # Check for conflicts
+       pip install --upgrade pip setuptools wheel
+       ```
+  </Accordion>
+
+  <Accordion title="📓 Jupyter Notebook Issues">
+    **Problem**: Can't run or complete the training notebook
+    
+    **Solutions**:
+    1. **Missing dependencies**:
+       ```bash path=null start=null
+       pip install jupyter pandas numpy scikit-learn matplotlib seaborn
+       ```
+    
+    2. **Kernel issues**:
+       ```bash path=null start=null
+       # Reset kernel
+       jupyter kernelspec list
+       jupyter kernelspec remove python3
+       python -m ipykernel install --user --name book-recommender
+       ```
+    
+    3. **Data file problems**:
+       ```bash path=null start=null
+       # Verify data files exist
+       ls -la data/
+       # Should show: BX-Books.csv, BX-Users.csv, BX-Book-Ratings.csv
+       ```
+  </Accordion>
+</AccordionGroup>
+
+## 🌐 Deployment Issues
+
+<AccordionGroup>
+  <Accordion title="☁️ Streamlit Cloud Deployment">
+    **Problem**: App won't deploy on Streamlit Cloud
+    
+    **Solutions**:
+    1. **File size limits**:
+       - Check if model files are too large (>1GB)
+       - Use Git LFS for large files
+       - Consider model compression
+    
+    2. **Dependencies**:
+       ```txt path=null start=null
+       # Ensure requirements.txt is complete
+       streamlit>=1.28.0
+       numpy>=1.24.0
+       pandas>=1.5.0
+       scikit-learn>=1.3.0
+       ```
+    
+    3. **Repository structure**:
+       - Ensure `app.py` is in root directory
+       - Check that all artifacts are committed
+       - Verify repository is public or accessible
+  </Accordion>
+
+  <Accordion title="🏗️ Heroku Deployment">
+    **Problem**: Heroku deployment fails or times out
+    
+    **Solutions**:
+    1. **Memory limits**:
+       - Use higher tier dyno for more memory
+       - Optimize model size and memory usage
+       - Monitor dyno metrics
+    
+    2. **Build time**:
+       ```bash path=null start=null
+       # Optimize Procfile
+       web: sh setup.sh && streamlit run app.py --server.port $PORT
+       ```
+    
+    3. **Environment variables**:
+       - Set appropriate Python runtime
+       - Configure Streamlit for production
+       - Check slug size limits
+  </Accordion>
+</AccordionGroup>
+
+## 🔍 Debugging Tips
+
+### Enable Debug Mode
+
+```python path=null start=null
+# Add to app.py for detailed error information
+import streamlit as st
+
+# Debug mode
+st.set_option('deprecation.showPyplotGlobalUse', False)
+
+# Show detailed errors
+try:
+    # Your code here
+    pass
+except Exception as e:
+    st.error(f"Debug info: {str(e)}")
+    st.exception(e)
+```
+
+### Logging Setup
+
+```python path=null start=null
+import logging
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('app.log'),
+        logging.StreamHandler()
+    ]
+)
+
+logger = logging.getLogger(__name__)
+
+# Use in your code
+logger.info("Model loaded successfully")
+logger.error("Error in recommendation generation")
+```
+
+### System Information
+
+```bash path=null start=null
+# Gather system info for troubleshooting
+python -c "
+import sys
+import platform
+import streamlit as st
+
+print('Python version:', sys.version)
+print('Platform:', platform.platform())
+print('Streamlit version:', st.__version__)
+print('Available memory:', psutil.virtual_memory().available / 1024**3, 'GB')
+"
+```
+
+## 📞 Getting Help
+
+If you're still experiencing issues:
+
+<CardGroup cols={2}>
+  <Card title="📚 Check Documentation" icon="book">
+    Review the [installation guide](/installation) and [user guide](/using-the-app)
+  </Card>
+  <Card title="🔍 Search Issues" icon="search">
+    Look through existing GitHub issues for similar problems
+  </Card>
+  <Card title="💬 Ask Questions" icon="chat">
+    Open a new issue with detailed error information and system specs
+  </Card>
+  <Card title="📝 Provide Details" icon="list">
+    Include Python version, OS, error messages, and steps to reproduce
+  </Card>
+</CardGroup>
+
+## 📋 Issue Reporting Checklist
+
+When reporting issues, please include:
+
+- [ ] **Operating System** (Windows/macOS/Linux + version)
+- [ ] **Python Version** (`python --version`)
+- [ ] **Package Versions** (`pip list`)
+- [ ] **Error Messages** (complete error text)
+- [ ] **Steps to Reproduce** (what you did before the error)
+- [ ] **Expected Behavior** (what should have happened)
+- [ ] **Screenshots** (if applicable)
+- [ ] **Log Files** (if available)
+
+---
+
+<Info>
+Most issues can be resolved by ensuring you have the correct Python environment and all required files. When in doubt, try creating a fresh virtual environment and reinstalling everything from scratch! 🔧
+</Info>

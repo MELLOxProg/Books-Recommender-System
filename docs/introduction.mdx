@@ -1,149 +1,164 @@
 ---
-title: 'Introduction'
-description: 'Discover your next favorite book with AI-powered recommendations'
+title: 'Welcome to Book Recommender System'
+description: 'Discover your next favorite book with AI-powered recommendations using collaborative filtering and machine learning'
 ---
 
 <img
   className="block dark:hidden"
   src="/frontend1.png"
-  alt="Book Recommender System - Interactive Interface"
+  alt="Book Recommender System - Main Interface"
 />
 <img
   className="hidden dark:block"
   src="/frontend1.png"
-  alt="Book Recommender System - Interactive Interface"
+  alt="Book Recommender System - Main Interface"
 />
 
 ## What is the Book Recommender System?
 
-The Book Recommender System is an intelligent machine learning application that provides personalized book recommendations using **collaborative filtering**. Built with modern ML algorithms and deployed as an interactive Streamlit web application, it helps users discover new books tailored to their reading preferences.
+The **Book Recommender System** is an intelligent machine learning application that provides personalized book recommendations using **collaborative filtering**. Built with modern ML algorithms and deployed as an interactive Streamlit web application, it helps users discover new books tailored to their reading preferences.
 
-## Key Features
+This system analyzes user rating patterns from a massive dataset to suggest books that users with similar tastes have enjoyed, making it particularly effective for discovering both popular titles and hidden gems.
+
+## ✨ Key Features
 
 <CardGroup cols={2}>
   <Card
     title="🤖 AI-Powered Recommendations"
     icon="brain"
-    href="/features"
+    href="/how-it-works"
   >
-    Uses k-Nearest Neighbors algorithm to find similar books based on user rating patterns
+    Uses k-Nearest Neighbors algorithm with cosine similarity to find books based on collaborative filtering patterns
   </Card>
   <Card
     title="📚 Massive Book Database"
     icon="book"
-    href="/demo"
+    href="/data-processing"
   >
-    Trained on 271,379 books with 1.1M+ user ratings from the Book Crossing dataset
+    Trained on **271,379** books with **1.1M+** user ratings from the comprehensive Book Crossing dataset
   </Card>
   <Card
     title="🎨 Beautiful Interface"
     icon="palette"
-    href="/demo"
+    href="/using-the-app"
   >
-    Clean, responsive Streamlit interface with book covers and intuitive design
+    Clean, responsive Streamlit interface with book covers, intuitive design, and real-time recommendations
   </Card>
   <Card
     title="⚡ Real-time Results"
     icon="bolt"
-    href="/how-it-works"
+    href="/machine-learning-pipeline"
   >
-    Instant recommendations with optimized performance and caching
+    Instant recommendations with optimized performance, pre-trained models, and efficient data structures
   </Card>
 </CardGroup>
 
-## How It Works
+## 🔧 Technology Stack
 
-The system employs **collaborative filtering** to analyze user behavior patterns:
-
-1. **Data Analysis** - Processes user ratings and book metadata from the Book Crossing dataset
-2. **Similarity Calculation** - Uses cosine similarity to find books with similar rating patterns  
-3. **Recommendation Generation** - Returns the 5 most similar books when you select a title
-4. **Visual Presentation** - Displays recommendations with book covers and metadata
-
-<Note>
-The system focuses on finding books that users with similar tastes have enjoyed, making it particularly effective for discovering hidden gems and popular titles within your preferred genres.
-</Note>
-
-## Technology Stack
+Our recommendation system is built with modern, robust technologies:
 
 - **Machine Learning**: Scikit-learn, NumPy, Pandas
-- **Web Framework**: Streamlit
-- **Data Processing**: Jupyter Notebooks
-- **Deployment**: Heroku, Docker, Streamlit Cloud
-- **Dataset**: Book Crossing Dataset (Kaggle)
+- **Web Framework**: Streamlit for interactive UI
+- **Data Processing**: Jupyter Notebooks for model training
+- **Deployment**: Streamlit Cloud, Heroku, Docker support
+- **Dataset**: Book Crossing Dataset from Kaggle
 
-## Quick Start
+## 🚀 Quick Start
 
-Ready to explore personalized book recommendations?
+Get started with personalized book recommendations in minutes:
 
 <Steps>
   <Step title="Clone the Repository">
-    ```bash
+    ```bash path=null start=null
     git clone https://github.com/MELLOxProg/Books-Recommender-System.git
     cd Books-Recommender-System
     ```
   </Step>
   <Step title="Install Dependencies">
-    ```bash
+    ```bash path=null start=null
     pip install -r requirements.txt
     ```
   </Step>
   <Step title="Run the Application">
-    ```bash
+    ```bash path=null start=null
     streamlit run app.py
     ```
   </Step>
-  <Step title="Start Recommending">
+  <Step title="Start Discovering Books">
     Open your browser to `http://localhost:8501` and select a book to get personalized recommendations!
   </Step>
 </Steps>
 
-## Project Highlights
+## 📊 System Capabilities
 
 <AccordionGroup>
-  <Accordion title="📊 Dataset Scale">
-    The system processes a massive dataset containing:
-    - **271,379** unique books
-    - **278,858** users  
-    - **1,149,780** user ratings
-    - **Book metadata** including authors, publishers, and cover images
+  <Accordion title="📈 Dataset Scale & Quality">
+    Our system processes a comprehensive dataset containing:
+    - **271,379** unique books with metadata
+    - **278,858** registered users  
+    - **1,149,780** user ratings and interactions
+    - **Rich metadata** including authors, publishers, publication years, and cover images
+    - **Quality filtering** ensuring reliable recommendation patterns
   </Accordion>
 
-  <Accordion title="🎯 Recommendation Quality">
-    Advanced filtering ensures high-quality recommendations:
-    - Books with **50+ ratings** for reliable patterns
-    - Users with **200+ ratings** for meaningful preferences
-    - **Cosine similarity** for optimal sparse data handling
+  <Accordion title="🎯 Advanced Recommendation Engine">
+    Sophisticated filtering ensures high-quality recommendations:
+    - **Popularity threshold**: Books with 50+ ratings for statistical significance
+    - **User engagement**: Users with 200+ ratings for meaningful preference patterns
+    - **Cosine similarity**: Optimized for sparse data and collaborative filtering
+    - **Real-time processing**: Instant results with pre-computed similarity matrices
   </Accordion>
 
-  <Accordion title="🚀 Performance Optimized">
-    Built for speed and efficiency:
-    - **Pre-trained models** for instant results
-    - **Optimized data structures** for fast lookups
-    - **Caching strategies** for popular recommendations
+  <Accordion title="🏗️ Scalable Architecture">
+    Built for performance and reliability:
+    - **Pre-trained models** stored as optimized pickle files
+    - **Efficient data structures** for fast book and user lookups
+    - **Memory optimization** for handling large sparse matrices
+    - **Caching strategies** for popular book recommendations
   </Accordion>
 
-  <Accordion title="🔧 Easy Deployment">
-    Multiple deployment options available:
-    - **Local development** with Streamlit
-    - **Cloud deployment** on Heroku or Streamlit Cloud
-    - **Containerized** with Docker for any environment
+  <Accordion title="🚀 Multiple Deployment Options">
+    Flexible deployment across different environments:
+    - **Local development** with Streamlit for testing
+    - **Cloud deployment** on Streamlit Cloud or Heroku
+    - **Containerized deployment** with Docker for any environment
+    - **Scalable infrastructure** ready for production workloads
   </Accordion>
 </AccordionGroup>
 
-## Next Steps
+## 🎯 How It Works
+
+The Book Recommender System employs **collaborative filtering** to analyze user behavior patterns:
+
+1. **Data Preprocessing** - Clean and process user ratings and book metadata from the Book Crossing dataset
+2. **Feature Engineering** - Create user-item matrices and apply filtering criteria for data quality
+3. **Similarity Calculation** - Use cosine similarity to identify books with similar rating patterns
+4. **Model Training** - Train k-Nearest Neighbors model for efficient similarity searches
+5. **Recommendation Generation** - Return the 5 most similar books with visual presentation
+
+<Note>
+The system focuses on collaborative filtering, which finds books that users with similar reading preferences have enjoyed. This approach is particularly effective for discovering books across different genres and finding hidden gems that match your taste.
+</Note>
+
+## 📖 What's Next?
 
 <CardGroup cols={2}>
-  <Card title="Explore Features" icon="star" href="/features">
-    Discover all the capabilities of the recommendation system
+  <Card title="🚀 Quick Start" icon="rocket" href="/quickstart">
+    Get the system running locally in under 5 minutes
   </Card>
-  <Card title="See It in Action" icon="play" href="/demo">
-    View screenshots and demo of the application
+  <Card title="📱 Try the App" icon="play" href="/using-the-app">
+    Learn how to use the recommendation interface
   </Card>
-  <Card title="Technical Deep Dive" icon="code" href="/ml-pipeline">
-    Understand the machine learning pipeline
+  <Card title="🧠 Understand the ML" icon="brain" href="/collaborative-filtering">
+    Deep dive into the machine learning concepts
   </Card>
-  <Card title="Deploy Your Own" icon="rocket" href="/deployment">
+  <Card title="🌐 Deploy Your Own" icon="globe" href="/deployment/overview">
     Deploy the system to your preferred platform
   </Card>
 </CardGroup>
+
+---
+
+<Info>
+**Ready to discover your next favorite book?** Start with our [Quick Start Guide](/quickstart) or explore the [live demo](https://share.streamlit.io) to see the system in action.
+</Info>

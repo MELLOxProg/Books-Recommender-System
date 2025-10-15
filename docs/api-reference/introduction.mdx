@@ -1,0 +1,412 @@
+---
+title: 'API Reference'
+description: 'Complete technical reference for the Book Recommender System functions and modules'
+---
+
+## Overview
+
+The Book Recommender System provides a clean, modular API for generating book recommendations using collaborative filtering. This reference covers all public functions, classes, and modules available for developers.
+
+<img src="/frontend1.png" alt="API Generated Recommendations" />
+
+## 🏗️ Architecture Overview
+
+The system is organized into two main components:
+
+<CardGroup cols={2}>
+  <Card title="📱 Streamlit Frontend" icon="desktop">
+    User interface and interaction handling
+    
+    **File**: `app.py`
+  </Card>
+  <Card title="🤖 ML Backend" icon="brain">
+    Recommendation engine and model operations
+    
+    **Files**: `artifacts/*.pkl`, Jupyter notebook
+  </Card>
+</CardGroup>
+
+## 📋 Core Functions
+
+### Recommendation Engine
+
+The main recommendation functionality is provided through these key functions:
+
+<AccordionGroup>
+  <Accordion title="recommend_book()">
+    **Purpose**: Generate book recommendations based on collaborative filtering
+    
+    ```python path=/C/Users/Nirav/Desktop/rs project/Books-Recommender-System/app.py start=37
+    def recommend_book(book_name):
+        books_list = []
+        book_id = np.where(book_pivot.index == book_name)[0][0]
+        distance, suggestion = model.kneighbors(book_pivot.iloc[book_id,:].values.reshape(1,-1), n_neighbors=6 )
+    
+        poster_url = fetch_poster(suggestion)
+        
+        for i in range(len(suggestion)):
+                books = book_pivot.index[suggestion[i]]
+                for j in books:
+                    books_list.append(j)
+        return books_list , poster_url       
+    ```
+    
+    **Parameters**:
+    - `book_name` (str): Title of the book to base recommendations on
+    
+    **Returns**:
+    - `books_list` (list): List of 5 recommended book titles
+    - `poster_url` (list): List of corresponding book cover image URLs
+    
+    **Raises**:
+    - `IndexError`: If book name not found in dataset
+    - `ValueError`: If invalid input provided
+  </Accordion>
+
+  <Accordion title="fetch_poster()">
+    **Purpose**: Retrieve book cover images for recommended books
+    
+    ```python path=/C/Users/Nirav/Desktop/rs project/Books-Recommender-System/app.py start=17
+    def fetch_poster(suggestion):
+        book_name = []
+        ids_index = []
+        poster_url = []
+    
+        for book_id in suggestion:
+            book_name.append(book_pivot.index[book_id])
+    
+        for name in book_name[0]: 
+            ids = np.where(final_rating['title'] == name)[0][0]
+            ids_index.append(ids)
+    
+        for idx in ids_index:
+            url = final_rating.iloc[idx]['image_url']
+            poster_url.append(url)
+    
+        return poster_url
+    ```
+    
+    **Parameters**:
+    - `suggestion` (np.array): Array of book indices from k-NN search
+    
+    **Returns**:
+    - `poster_url` (list): List of image URLs for book covers
+    
+    **Notes**:
+    - Handles missing images gracefully
+    - Uses Amazon book cover URLs from dataset
+  </Accordion>
+</AccordionGroup>
+
+## 📊 Data Structures
+
+### Model Artifacts
+
+The system relies on pre-trained model artifacts stored as pickle files:
+
+<AccordionGroup>
+  <Accordion title="model.pkl">
+    **Type**: `sklearn.neighbors.NearestNeighbors`
+    
+    **Description**: Trained k-NN model using cosine similarity
+    
+    **Configuration**:
+    ```python path=null start=null
+    NearestNeighbors(
+        algorithm='brute',
+        metric='cosine', 
+        n_jobs=-1
+    )
+    ```
+    
+    **Usage**:
+    ```python path=null start=null
+    model = pickle.load(open('artifacts/model.pkl', 'rb'))
+    distances, indices = model.kneighbors(query_vector, n_neighbors=6)
+    ```
+  </Accordion>
+
+  <Accordion title="book_names.pkl">
+    **Type**: `list`
+    
+    **Description**: Complete list of available book titles
+    
+    **Format**: List of strings containing book titles
+    
+    **Usage**:
+    ```python path=null start=null
+    book_names = pickle.load(open('artifacts/book_names.pkl', 'rb'))
+    # Example: ['1984', 'Pride and Prejudice', 'Harry Potter and the Sorcerer's Stone', ...]
+    ```
+    
+    **Notes**:
+    - Filtered for books with 50+ ratings
+    - Used to populate Streamlit dropdown
+    - Approximately 11,000 titles
+  </Accordion>
+
+  <Accordion title="book_pivot.pkl">
+    **Type**: `pandas.DataFrame`
+    
+    **Description**: User-item interaction matrix
+    
+    **Structure**:
+    ```python path=null start=null
+    # Rows: Book titles (index)
+    # Columns: User IDs 
+    # Values: Ratings (1-10 scale, 0 for no rating)
+    # Shape: (~11,000 books, ~900 users)
+    ```
+    
+    **Usage**:
+    ```python path=null start=null
+    book_pivot = pickle.load(open('artifacts/book_pivot.pkl', 'rb'))
+    book_vector = book_pivot.loc['Book Title'].values.reshape(1, -1)
+    ```
+  </Accordion>
+
+  <Accordion title="final_rating.pkl">
+    **Type**: `pandas.DataFrame`
+    
+    **Description**: Processed ratings with metadata
+    
+    **Columns**:
+    - `user_id`: User identifier
+    - `isbn`: Book ISBN
+    - `rating`: User rating (1-10)
+    - `title`: Book title
+    - `author`: Book author
+    - `image_url`: Book cover URL
+    - `publisher`: Book publisher
+    - `year`: Publication year
+    
+    **Usage**:
+    ```python path=null start=null
+    final_rating = pickle.load(open('artifacts/final_rating.pkl', 'rb'))
+    book_info = final_rating[final_rating['title'] == book_name]
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## 🔧 Streamlit Components
+
+### User Interface Functions
+
+<AccordionGroup>
+  <Accordion title="Application Setup">
+    **Main application initialization**:
+    
+    ```python path=/C/Users/Nirav/Desktop/rs project/Books-Recommender-System/app.py start=10
+    st.header('Book Recommender System Using Machine Learning')
+    model = pickle.load(open('artifacts/model.pkl','rb'))
+    book_names = pickle.load(open('artifacts/book_names.pkl','rb'))
+    final_rating = pickle.load(open('artifacts/final_rating.pkl','rb'))
+    book_pivot = pickle.load(open('artifacts/book_pivot.pkl','rb'))
+    ```
+    
+    **Components**:
+    - Page header and title
+    - Model and data loading
+    - Global variable initialization
+  </Accordion>
+
+  <Accordion title="Book Selection Interface">
+    **User input handling**:
+    
+    ```python path=/C/Users/Nirav/Desktop/rs project/Books-Recommender-System/app.py start=52
+    selected_books = st.selectbox(
+        "Type or select a book from the dropdown",
+        book_names
+    )
+    ```
+    
+    **Features**:
+    - Searchable dropdown with all available books
+    - Type-ahead filtering
+    - Handles large datasets efficiently
+  </Accordion>
+
+  <Accordion title="Results Display">
+    **Recommendation presentation**:
+    
+    ```python path=/C/Users/Nirav/Desktop/rs project/Books-Recommender-System/app.py start=57
+    if st.button('Show Recommendation'):
+        recommended_books,poster_url = recommend_book(selected_books)
+        col1, col2, col3, col4, col5 = st.columns(5)
+        with col1:
+            st.text(recommended_books[1])
+            st.image(poster_url[1])
+        # ... (similar for col2-col5)
+    ```
+    
+    **Layout**:
+    - 5-column grid layout
+    - Book titles above images
+    - Responsive design
+    - Error handling for missing images
+  </Accordion>
+</AccordionGroup>
+
+## 🔄 Data Flow
+
+### Request Processing Pipeline
+
+<Steps>
+  <Step title="User Input">
+    User selects book from dropdown interface
+    
+    ```python path=null start=null
+    selected_book = st.selectbox("Select book", book_names)
+    ```
+  </Step>
+  
+  <Step title="Book Lookup">
+    System finds book index in pivot matrix
+    
+    ```python path=null start=null
+    book_id = np.where(book_pivot.index == book_name)[0][0]
+    ```
+  </Step>
+  
+  <Step title="Similarity Search">
+    k-NN model finds similar books
+    
+    ```python path=null start=null
+    distance, suggestion = model.kneighbors(
+        book_pivot.iloc[book_id,:].values.reshape(1,-1), 
+        n_neighbors=6
+    )
+    ```
+  </Step>
+  
+  <Step title="Metadata Retrieval">
+    Fetch book covers and titles
+    
+    ```python path=null start=null
+    poster_urls = fetch_poster(suggestion)
+    book_titles = [book_pivot.index[i] for i in suggestion[0][1:]]
+    ```
+  </Step>
+  
+  <Step title="UI Rendering">
+    Display results in 5-column layout
+    
+    ```python path=null start=null
+    for i, (title, url) in enumerate(zip(book_titles, poster_urls)):
+        with st.columns(5)[i]:
+            st.text(title)
+            st.image(url)
+    ```
+  </Step>
+</Steps>
+
+## ⚙️ Configuration
+
+### Environment Variables
+
+While the current system doesn't use environment variables, here are recommended settings for production:
+
+<AccordionGroup>
+  <Accordion title="Performance Settings">
+    ```python path=null start=null
+    # Recommended environment variables
+    STREAMLIT_SERVER_MAX_UPLOAD_SIZE = 200  # MB
+    STREAMLIT_SERVER_MAX_MESSAGE_SIZE = 200  # MB
+    STREAMLIT_GLOBAL_SHOW_WARNING_ON_DIRECT_EXECUTION = false
+    
+    # Python optimization
+    PYTHONUNBUFFERED = 1
+    PYTHONDONTWRITEBYTECODE = 1
+    ```
+  </Accordion>
+
+  <Accordion title="Model Configuration">
+    ```python path=null start=null
+    # Model parameters (in training notebook)
+    N_NEIGHBORS = 6          # Number of similar books to find
+    MIN_BOOK_RATINGS = 50    # Minimum ratings per book
+    MIN_USER_RATINGS = 200   # Minimum ratings per user
+    SIMILARITY_METRIC = 'cosine'  # Distance metric
+    ALGORITHM = 'brute'      # k-NN algorithm
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## 🚨 Error Handling
+
+### Common Exceptions
+
+<AccordionGroup>
+  <Accordion title="Book Not Found">
+    **Scenario**: Selected book not in filtered dataset
+    
+    ```python path=null start=null
+    try:
+        book_id = np.where(book_pivot.index == book_name)[0][0]
+    except IndexError:
+        st.error(f"Book '{book_name}' not found in our database.")
+        return None, None
+    ```
+  </Accordion>
+
+  <Accordion title="Model Loading Error">
+    **Scenario**: Pickle files missing or corrupted
+    
+    ```python path=null start=null
+    try:
+        model = pickle.load(open('artifacts/model.pkl', 'rb'))
+    except FileNotFoundError:
+        st.error("Model file not found. Please run the training notebook first.")
+    except pickle.PickleError:
+        st.error("Model file corrupted. Please retrain the model.")
+    ```
+  </Accordion>
+
+  <Accordion title="Memory Errors">
+    **Scenario**: Insufficient system memory
+    
+    ```python path=null start=null
+    try:
+        # Large matrix operations
+        result = model.kneighbors(query_vector)
+    except MemoryError:
+        st.error("Insufficient memory. Try restarting the application.")
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## 🔗 API Extensions
+
+For developers wanting to extend the system:
+
+<CardGroup cols={2}>
+  <Card title="🔌 Custom Functions" icon="code" href="/api-reference/ml-functions">
+    Create custom recommendation algorithms and utility functions
+  </Card>
+  <Card title="🎨 UI Components" icon="palette" href="/api-reference/streamlit-functions">
+    Build custom Streamlit components and interfaces
+  </Card>
+</CardGroup>
+
+## 📚 Next Steps
+
+<CardGroup cols={2}>
+  <Card title="🔧 ML Functions" icon="brain" href="/api-reference/ml-functions">
+    Deep dive into machine learning functions and algorithms
+  </Card>
+  <Card title="🖥️ Streamlit Functions" icon="desktop" href="/api-reference/streamlit-functions">
+    Explore UI components and interface functions
+  </Card>
+  <Card title="💡 Examples" icon="lightbulb" href="/examples/basic-usage">
+    See practical examples and usage patterns
+  </Card>
+  <Card title="🏗️ Development" icon="wrench" href="/development-setup">
+    Set up your development environment
+  </Card>
+</CardGroup>
+
+---
+
+<Info>
+This API reference provides the foundation for understanding and extending the Book Recommender System. Use these functions and patterns to build your own recommendation features! 🚀📖
+</Info>

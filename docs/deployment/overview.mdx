@@ -1,0 +1,404 @@
+---
+title: 'Deployment Overview'
+description: 'Complete guide to deploying the Book Recommender System across different platforms'
+---
+
+## 🚀 Deployment Options
+
+The Book Recommender System can be deployed on multiple platforms, each with its own advantages. Choose the option that best fits your needs:
+
+<CardGroup cols={2}>
+  <Card title="☁️ Streamlit Cloud" icon="cloud" href="/deployment/streamlit-cloud">
+    **Best for**: Quick demos and prototypes
+    - Free tier available
+    - Direct GitHub integration
+    - Automatic deployments
+    - Built-in SSL and CDN
+  </Card>
+  <Card title="🏗️ Heroku" icon="server" href="/deployment/heroku">
+    **Best for**: Production applications
+    - Scalable infrastructure
+    - Add-on ecosystem
+    - Custom domains
+    - Professional hosting
+  </Card>
+  <Card title="🐳 Docker" icon="docker" href="/deployment/docker">
+    **Best for**: Containerized environments
+    - Platform independent
+    - Consistent environments
+    - Easy scaling
+    - DevOps integration
+  </Card>
+  <Card title="🖥️ Self-Hosted" icon="home">
+    **Best for**: Custom infrastructure
+    - Full control
+    - Cost effective at scale
+    - Custom configurations
+    - On-premise deployment
+  </Card>
+</CardGroup>
+
+## 📋 Pre-Deployment Checklist
+
+Before deploying to any platform, ensure you have completed these steps:
+
+<AccordionGroup>
+  <Accordion title="✅ Model Artifacts">
+    **Verify all required model files exist in `artifacts/` directory:**
+    
+    ```bash path=null start=null
+    ls -la artifacts/
+    # Required files:
+    # model.pkl (50-100MB) - Trained k-NN model
+    # book_names.pkl (~1MB) - Available book titles
+    # book_pivot.pkl (20-50MB) - User-item matrix  
+    # final_rating.pkl (10-30MB) - Processed ratings with metadata
+    ```
+    
+    **If files are missing:**
+    - Run the `Books Recommender.ipynb` notebook
+    - Execute all cells to generate artifacts
+    - Verify file sizes are reasonable (not 0 bytes)
+  </Accordion>
+
+  <Accordion title="📦 Dependencies">
+    **Ensure `requirements.txt` includes all necessary packages:**
+    
+    ```txt path=null start=null
+    streamlit>=1.28.0
+    numpy>=1.24.0
+    pandas>=1.5.0
+    scikit-learn>=1.3.0
+    ```
+    
+    **Test locally:**
+    ```bash path=null start=null
+    pip install -r requirements.txt
+    streamlit run app.py
+    ```
+  </Accordion>
+
+  <Accordion title="🔧 Configuration Files">
+    **Platform-specific configuration files should be present:**
+    
+    **For Heroku:**
+    - `Procfile`: Defines how to start the app
+    - `setup.sh`: Streamlit configuration
+    - `requirements.txt`: Python dependencies
+    
+    **For Docker:**
+    - `Dockerfile`: Container configuration
+    - `.dockerignore`: Exclude unnecessary files
+    
+    **For Streamlit Cloud:**
+    - `requirements.txt`: Dependencies only
+    - GitHub repository access
+  </Accordion>
+
+  <Accordion title="💾 File Size Optimization">
+    **Large model files can cause deployment issues:**
+    
+    ```bash path=null start=null
+    # Check artifact sizes
+    du -h artifacts/
+    
+    # Optimize if needed
+    # - Use pickle protocol 4 or 5 for compression
+    # - Consider model pruning techniques
+    # - Use sparse matrices where possible
+    ```
+    
+    **Git LFS for large files:**
+    ```bash path=null start=null
+    git lfs track "artifacts/*.pkl"
+    git add .gitattributes
+    git add artifacts/
+    git commit -m "Add model artifacts with LFS"
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## 🏛️ Architecture Considerations
+
+### Resource Requirements
+
+<CardGroup cols={3}>
+  <Card title="💾 Memory" icon="memory">
+    **Minimum**: 1GB RAM
+    **Recommended**: 2GB+ RAM
+    
+    Model loading requires significant memory for matrix operations
+  </Card>
+  <Card title="💿 Storage" icon="hard-drive">
+    **Application**: ~200MB
+    **Models**: ~100-300MB
+    **Total**: ~500MB
+  </Card>
+  <Card title="⚡ CPU" icon="microchip">
+    **Minimum**: 1 vCPU
+    **Recommended**: 2+ vCPU
+    
+    For faster similarity calculations
+  </Card>
+</CardGroup>
+
+### Performance Optimization
+
+<AccordionGroup>
+  <Accordion title="🚀 Startup Time">
+    **Model Loading Optimization:**
+    ```python path=null start=null
+    # Consider lazy loading for large models
+    @st.cache_resource
+    def load_models():
+        model = pickle.load(open('artifacts/model.pkl', 'rb'))
+        book_names = pickle.load(open('artifacts/book_names.pkl', 'rb'))
+        return model, book_names
+    
+    # Cache prevents reloading on each request
+    ```
+  </Accordion>
+
+  <Accordion title="⚡ Response Time">
+    **Recommendation Speed:**
+    - Pre-computed similarities for popular books
+    - Efficient sparse matrix operations
+    - Streamlit caching for repeated requests
+    - CDN for book cover images
+  </Accordion>
+
+  <Accordion title="📊 Memory Management">
+    **Efficient Memory Usage:**
+    ```python path=null start=null
+    # Use appropriate data types
+    import numpy as np
+    
+    # Float32 instead of Float64 for models
+    model_data = model_data.astype(np.float32)
+    
+    # Delete unused variables
+    del raw_data, intermediate_processing
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## 🌐 Platform Comparison
+
+<Tabs>
+  <Tab title="Streamlit Cloud">
+    ### Pros ✅
+    - **Free tier available** with generous limits
+    - **Zero configuration** deployment from GitHub
+    - **Automatic SSL** and domain provisioning  
+    - **Built-in authentication** options
+    - **Instant deployments** on code push
+    
+    ### Cons ❌
+    - **Resource limits** on free tier (1GB RAM, 1 vCPU)
+    - **Cold start delays** after inactivity
+    - **Limited customization** of server environment
+    - **Dependent on Streamlit** platform availability
+    
+    ### Best For 🎯
+    - Personal projects and demos
+    - Rapid prototyping
+    - Educational use cases
+    - Small to medium traffic
+  </Tab>
+  
+  <Tab title="Heroku">
+    ### Pros ✅
+    - **Scalable dynos** from hobby to enterprise
+    - **Rich add-on ecosystem** (databases, monitoring)
+    - **Custom domain support** with SSL
+    - **Horizontal scaling** capabilities
+    - **Professional-grade** infrastructure
+    
+    ### Cons ❌
+    - **Costs scale quickly** with resource usage
+    - **Cold starts** on free/hobby dynos  
+    - **File system limitations** (ephemeral)
+    - **Complex pricing** structure
+    
+    ### Best For 🎯
+    - Production applications
+    - Commercial projects  
+    - Applications requiring scaling
+    - Integration with databases/services
+  </Tab>
+  
+  <Tab title="Docker">
+    ### Pros ✅
+    - **Platform independence** - run anywhere
+    - **Consistent environments** across dev/prod
+    - **Easy scaling** with orchestration
+    - **Version control** of entire environment
+    - **DevOps integration** with CI/CD
+    
+    ### Cons ❌
+    - **Additional complexity** in setup
+    - **Docker knowledge required**
+    - **Resource overhead** from containerization
+    - **Need hosting platform** for containers
+    
+    ### Best For 🎯
+    - Enterprise deployments
+    - Multi-environment consistency
+    - Microservices architecture
+    - DevOps-mature organizations
+  </Tab>
+  
+  <Tab title="Self-Hosted">
+    ### Pros ✅
+    - **Full control** over infrastructure
+    - **Cost effective** at scale
+    - **Custom configurations** possible
+    - **No platform limitations**
+    - **Data sovereignty**
+    
+    ### Cons ❌
+    - **Infrastructure management** responsibility
+    - **Security and maintenance** overhead
+    - **Scaling complexity**
+    - **Higher technical requirements**
+    
+    ### Best For 🎯
+    - Organizations with existing infrastructure
+    - High-traffic applications
+    - Custom compliance requirements
+    - Long-term production systems
+  </Tab>
+</Tabs>
+
+## 🔒 Security Considerations
+
+### Data Privacy
+
+<AccordionGroup>
+  <Accordion title="📊 User Data">
+    **The system processes:**
+    - Book selection choices (temporary)
+    - No personal information storage
+    - No user account requirements
+    - Recommendation requests (not stored)
+    
+    **Best Practices:**
+    - Implement session-based data only
+    - Clear temporary data after use
+    - Use HTTPS for all connections
+    - Consider privacy policy for production
+  </Accordion>
+
+  <Accordion title="🔐 Model Security">
+    **Protecting ML models:**
+    - Models contain no sensitive user data
+    - Based on public Book Crossing dataset
+    - No reverse engineering concerns
+    - Consider model versioning and updates
+    
+    **Deployment Security:**
+    - Secure artifact storage (encrypted at rest)
+    - Access control for model updates
+    - Monitoring for unusual usage patterns
+  </Accordion>
+</AccordionGroup>
+
+### Infrastructure Security
+
+<CardGroup cols={2}>
+  <Card title="🌐 Network Security" icon="shield">
+    - HTTPS/TLS encryption
+    - Secure headers configuration
+    - Rate limiting for API calls
+    - DDoS protection considerations
+  </Card>
+  <Card title="🔧 Application Security" icon="lock">
+    - Input validation and sanitization
+    - Error handling without info leakage
+    - Dependency vulnerability scanning
+    - Regular security updates
+  </Card>
+</CardGroup>
+
+## 📈 Monitoring and Maintenance
+
+### Key Metrics to Track
+
+<AccordionGroup>
+  <Accordion title="📊 Application Metrics">
+    **Performance Indicators:**
+    ```python path=null start=null
+    # Track these metrics:
+    - Response time per recommendation
+    - Memory usage over time  
+    - Model loading time
+    - Error rates and types
+    - User session duration
+    ```
+  </Accordion>
+
+  <Accordion title="🖥️ Infrastructure Metrics">
+    **System Health:**
+    - CPU utilization
+    - Memory consumption
+    - Network I/O
+    - Storage usage
+    - Uptime/availability
+  </Accordion>
+
+  <Accordion title="👥 Usage Analytics">
+    **User Behavior:**
+    - Popular book selections
+    - Recommendation click-through rates
+    - Peak usage times
+    - Geographic distribution
+    - Session patterns
+  </Accordion>
+</AccordionGroup>
+
+### Maintenance Tasks
+
+<Steps>
+  <Step title="Regular Updates">
+    - **Dependencies**: Keep Python packages current
+    - **Security patches**: Apply OS and framework updates
+    - **Model updates**: Retrain with new data periodically
+  </Step>
+  
+  <Step title="Performance Monitoring">
+    - **Resource usage**: Track memory and CPU trends
+    - **Response times**: Monitor recommendation latency
+    - **Error rates**: Watch for system failures
+  </Step>
+  
+  <Step title="Data Quality">
+    - **Model drift**: Monitor recommendation quality
+    - **Data freshness**: Consider dataset updates
+    - **User feedback**: Implement feedback mechanisms
+  </Step>
+</Steps>
+
+## 🚀 Next Steps
+
+Choose your deployment platform and follow the detailed guide:
+
+<CardGroup cols={2}>
+  <Card title="☁️ Streamlit Cloud" icon="cloud" href="/deployment/streamlit-cloud">
+    Free, fast deployment directly from GitHub
+  </Card>
+  <Card title="🏗️ Heroku Deployment" icon="server" href="/deployment/heroku">
+    Professional hosting with scaling options
+  </Card>
+  <Card title="🐳 Docker Setup" icon="docker" href="/deployment/docker">
+    Containerized deployment for any platform
+  </Card>
+  <Card title="🔧 Development Setup" icon="wrench" href="/development-setup">
+    Set up local development environment
+  </Card>
+</CardGroup>
+
+---
+
+<Success>
+**Ready to deploy?** Choose the platform that best fits your needs and follow the step-by-step deployment guides. Your Book Recommender System will be live and helping users discover great books! 📚🚀
+</Success>

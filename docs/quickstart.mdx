@@ -1,40 +1,54 @@
 ---
-title: 'Quickstart'
-description: 'Get your Book Recommender System running in minutes'
+title: 'Quick Start Guide'
+description: 'Get your Book Recommender System running in under 5 minutes'
 ---
 
 ## Prerequisites
 
 Before you begin, ensure you have the following installed:
 
-- **Python 3.7+** (3.9+ recommended)
-- **Git** for cloning the repository
-- **pip** for package management
+<CardGroup cols={3}>
+  <Card title="Python 3.7+" icon="python">
+    Python 3.9+ recommended for optimal performance
+  </Card>
+  <Card title="Git" icon="git-branch">
+    For cloning the repository
+  </Card>
+  <Card title="pip" icon="package">
+    Python package manager
+  </Card>
+</CardGroup>
 
-## Installation
+## 🚀 Installation
 
 <Steps>
   <Step title="Clone the Repository">
-    ```bash
+    ```bash path=null start=null
     git clone https://github.com/MELLOxProg/Books-Recommender-System.git
     cd Books-Recommender-System
     ```
   </Step>
 
-  <Step title="Create Virtual Environment">
+  <Step title="Create Virtual Environment (Recommended)">
     <Tabs>
-      <Tab title="venv">
-        ```bash
+      <Tab title="Using venv">
+        ```bash path=null start=null
+        # Create virtual environment
         python -m venv book-recommender
-        # Windows
+
+        # Activate (Windows)
         book-recommender\Scripts\activate
-        # macOS/Linux
+
+        # Activate (macOS/Linux)
         source book-recommender/bin/activate
         ```
       </Tab>
-      <Tab title="conda">
-        ```bash
+      <Tab title="Using conda">
+        ```bash path=null start=null
+        # Create conda environment
         conda create -n book-recommender python=3.9
+
+        # Activate environment
         conda activate book-recommender
         ```
       </Tab>
@@ -42,99 +56,203 @@ Before you begin, ensure you have the following installed:
   </Step>
 
   <Step title="Install Dependencies">
-    ```bash
+    ```bash path=null start=null
     pip install -r requirements.txt
     ```
     
     This installs:
     - `streamlit` - Web application framework
-    - `numpy` - Numerical computing
-    - Local package dependencies
+    - `numpy` - Numerical computing library
+    - Local package dependencies in editable mode
   </Step>
 
   <Step title="Verify Model Files">
-    Ensure the model artifacts are present:
-    ```bash
+    Check that the pre-trained model artifacts are present:
+    ```bash path=null start=null
+    # List artifacts directory
     ls artifacts/
     # Should show: model.pkl, book_names.pkl, book_pivot.pkl, final_rating.pkl
     ```
     
     <Warning>
-      If model files are missing, you'll need to run the Jupyter notebook to generate them first.
+      **Model files missing?** If the artifacts folder is empty, you'll need to run the Jupyter notebook to generate the model files first. See the [Model Training](/model-training) guide.
     </Warning>
   </Step>
 
   <Step title="Launch the Application">
-    ```bash
+    ```bash path=null start=null
     streamlit run app.py
     ```
     
-    The application will start and automatically open in your browser at `http://localhost:8501`
+    The application will automatically open in your default browser at `http://localhost:8501`
+    
+    <Tip>
+      If the browser doesn't open automatically, manually navigate to `http://localhost:8501`
+    </Tip>
   </Step>
 </Steps>
 
-## First Use
+## 🎯 First Use
 
-Once the application is running:
+Once the application is running successfully:
 
 <Steps>
   <Step title="Select a Book">
-    Use the dropdown menu to type or select a book you've enjoyed. The system contains thousands of popular titles.
+    <img src="/frontend1.png" alt="Book Selection Interface" />
+    
+    - Use the dropdown menu to search for a book you've enjoyed
+    - The system contains thousands of popular titles
+    - Start typing to filter the list, or browse the dropdown
   </Step>
   
   <Step title="Get Recommendations">
-    Click the "Show Recommendation" button to generate 5 personalized book suggestions.
+    <img src="/frontend1.png" alt="Recommendation Results" />
+    
+    - Click the **"Show Recommendation"** button
+    - The system will generate 5 personalized book suggestions
+    - Results appear instantly thanks to pre-computed models
   </Step>
   
   <Step title="Explore Results">
-    Browse the recommended books with their cover images. Each recommendation is based on similar user preferences.
+    <img src="/frontend1.png" alt="Book Recommendations Display" />
+    
+    - Browse recommended books with cover images
+    - Each recommendation is based on collaborative filtering
+    - Books are selected from users with similar reading preferences
   </Step>
 </Steps>
 
-## Troubleshooting
+## 🔧 Troubleshooting
 
 <AccordionGroup>
   <Accordion title="ModuleNotFoundError: No module named 'src'">
-    **Solution**: Install the local package in editable mode:
-    ```bash
+    **Problem**: The local package isn't installed properly.
+    
+    **Solution**: Install the package in editable mode:
+    ```bash path=null start=null
     pip install -e .
     ```
   </Accordion>
 
   <Accordion title="FileNotFoundError: artifacts/model.pkl">
-    **Solution**: Generate the model files by running the Jupyter notebook:
-    ```bash
-    jupyter notebook "Books Recommender.ipynb"
-    ```
-    Execute all cells to create the required pickle files.
+    **Problem**: Model files are missing from the artifacts directory.
+    
+    **Solutions**:
+    1. **Download pre-trained models** (if available):
+       ```bash path=null start=null
+       # Check if models are in a separate download
+       ls -la artifacts/
+       ```
+    
+    2. **Generate models from scratch**:
+       ```bash path=null start=null
+       # Run the Jupyter notebook
+       jupyter notebook "Books Recommender.ipynb"
+       # Execute all cells to generate pickle files
+       ```
+    
+    3. **Verify data files exist**:
+       ```bash path=null start=null
+       ls data/
+       # Should show: BX-Books.csv, BX-Users.csv, BX-Book-Ratings.csv
+       ```
   </Accordion>
 
   <Accordion title="Streamlit app won't start">
-    **Solution**: Ensure all dependencies are installed:
-    ```bash
-    pip install streamlit numpy
+    **Problem**: Streamlit or dependencies not installed correctly.
+    
+    **Solution**: Reinstall dependencies:
+    ```bash path=null start=null
+    pip install --upgrade streamlit numpy pandas
     streamlit run app.py
+    ```
+    
+    **Alternative**: Check Streamlit version compatibility:
+    ```bash path=null start=null
+    streamlit --version
+    pip install streamlit==1.28.0  # Use stable version
     ```
   </Accordion>
 
   <Accordion title="Empty recommendations or errors">
-    **Solution**: This usually indicates missing or corrupted model files. Re-run the training notebook to regenerate the artifacts.
+    **Problem**: Corrupted or missing model files, or data processing issues.
+    
+    **Solutions**:
+    1. **Clear and regenerate models**:
+       ```bash path=null start=null
+       rm -rf artifacts/*.pkl
+       jupyter notebook "Books Recommender.ipynb"
+       ```
+    
+    2. **Check data integrity**:
+       ```bash path=null start=null
+       python -c "import pandas as pd; print(pd.read_csv('data/BX-Books.csv', sep=';', encoding='latin-1').shape)"
+       ```
+    
+    3. **Verify pickle files**:
+       ```bash path=null start=null
+       python -c "import pickle; print([f for f in ['model.pkl', 'book_names.pkl'] if pickle.load(open(f'artifacts/{f}', 'rb'))])"
+       ```
+  </Accordion>
+
+  <Accordion title="Port 8501 already in use">
+    **Problem**: Another Streamlit app is using the default port.
+    
+    **Solution**: Use a different port:
+    ```bash path=null start=null
+    streamlit run app.py --server.port 8502
+    ```
   </Accordion>
 </AccordionGroup>
 
-## Next Steps
+## 🎉 Success Indicators
+
+Your Book Recommender System is working correctly when you see:
+
+<CheckboxGroup>
+  <Checkbox>Streamlit interface loads without errors</Checkbox>
+  <Checkbox>Book dropdown contains thousands of titles</Checkbox>
+  <Checkbox>Selecting a book and clicking "Show Recommendation" returns 5 books</Checkbox>
+  <Checkbox>Book cover images display properly</Checkbox>
+  <Checkbox>No error messages in the terminal or browser console</Checkbox>
+</CheckboxGroup>
+
+## ⚡ Performance Tips
 
 <CardGroup cols={2}>
-  <Card title="Explore Features" icon="star" href="/features">
-    Learn about all the system capabilities
+  <Card title="Faster Startup" icon="bolt">
+    Keep model files in artifacts/ directory to avoid regeneration on each run
   </Card>
-  <Card title="View Demo" icon="play" href="/demo">
-    See the application in action
+  <Card title="Memory Usage" icon="memory">
+    The app uses ~500MB RAM with full models loaded - ensure sufficient memory
   </Card>
-  <Card title="Understand the ML Pipeline" icon="brain" href="/ml-pipeline">
-    Dive into the machine learning implementation
+  <Card title="Browser Cache" icon="refresh">
+    Clear browser cache if interface appears broken after updates
   </Card>
-  <Card title="Deploy to Production" icon="rocket" href="/deployment">
-    Deploy your own instance
+  <Card title="Network Speed" icon="wifi">
+    Book cover images load from external URLs - good internet improves experience
   </Card>
 </CardGroup>
+
+## 📚 Next Steps
+
+<CardGroup cols={2}>
+  <Card title="📱 Learn the Interface" icon="computer" href="/using-the-app">
+    Detailed guide on using all app features
+  </Card>
+  <Card title="🔧 Development Setup" icon="wrench" href="/development-setup">
+    Set up the project for development and customization
+  </Card>
+  <Card title="🧠 Understanding ML" icon="brain" href="/collaborative-filtering">
+    Deep dive into the recommendation algorithms
+  </Card>
+  <Card title="🌐 Deploy Online" icon="globe" href="/deployment/overview">
+    Deploy your instance to the cloud
+  </Card>
+</CardGroup>
+
+---
+
+<Success>
+**Congratulations!** 🎉 Your Book Recommender System is now running. Start exploring book recommendations or dive deeper into the [machine learning concepts](/collaborative-filtering) behind the system.
+</Success>

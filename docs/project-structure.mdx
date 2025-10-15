@@ -1,282 +1,424 @@
 ---
 title: 'Project Structure'
-description: 'Understanding the codebase organization and file structure'
+description: 'Complete overview of the Book Recommender System file organization and architecture'
 ---
 
-## Overview
+## 📁 Repository Overview
 
-The Book Recommender System follows a clean, modular architecture designed for maintainability and scalability. Here's a comprehensive breakdown of the project structure:
+The Book Recommender System is organized into clear, logical sections for easy navigation and development. Here's the complete structure:
 
 ```
 Books-Recommender-System/
-├── 📱 app.py                          # Main Streamlit application
-├── 📓 Books Recommender.ipynb         # ML pipeline and model training
-├── 📋 requirements.txt                # Python dependencies
-├── ⚙️ setup.py                       # Package configuration
-├── 🚀 Procfile                       # Heroku deployment configuration
-├── 🔧 setup.sh                       # Streamlit configuration script
-├── 🖼️ frontend1.png                  # Main application screenshot
+├── 📱 Frontend Application
+│   ├── app.py                    # Main Streamlit application
+│   └── frontend1.png             # UI screenshot
 │
-├── 📊 artifacts/                     # Pre-trained ML models
-│   ├── model.pkl                     # Trained k-NN recommendation model
-│   ├── book_names.pkl                # List of available book titles
-│   ├── book_pivot.pkl                # User-item interaction matrix
-│   └── final_rating.pkl              # Processed ratings with metadata
+├── 🤖 Machine Learning
+│   ├── Books Recommender.ipynb   # Training notebook
+│   ├── artifacts/                # Pre-trained models
+│   │   ├── model.pkl            # k-NN recommendation model
+│   │   ├── book_names.pkl       # Available book titles
+│   │   ├── book_pivot.pkl       # User-item matrix
+│   │   └── final_rating.pkl     # Processed rating data
+│   └── src/                     # Source code modules
+│       ├── __init__.py
+│       └── utils/
+│           └── __init__.py
 │
-├── 📚 data/                          # Raw training datasets
-│   ├── BX-Books.csv                  # Book metadata (271K books)
-│   ├── BX-Users.csv                  # User demographics (278K users)
-│   └── BX-Book-Ratings.csv           # User ratings (1.1M ratings)
+├── 📊 Data
+│   └── data/                    # Raw datasets
+│       ├── BX-Books.csv         # Book metadata
+│       ├── BX-Users.csv         # User demographics  
+│       └── BX-Book-Ratings.csv  # User-book ratings
 │
-├── 🎨 demo/                          # Application screenshots
-│   ├── 1.png                         # Interface demo
-│   ├── 2.png                         # Recommendations view
-│   ├── 3.png                         # Additional features
-│   └── 6.jpeg                        # Hero image
+├── 📸 Demo Materials
+│   └── demo/                    # Application screenshots
+│       ├── 1.png               # Main interface
+│       ├── 2.png               # Book selection
+│       ├── 3.png               # Alternative interface
+│       └── 6.jpeg              # Additional demo
 │
-└── 📦 src/                           # Source package
-    └── utils/                        # Utility modules
-        └── __init__.py               # Package initialization
+├── 📚 Documentation
+│   ├── docs/                    # Mintlify documentation
+│   │   ├── *.mdx               # Documentation pages
+│   │   ├── api-reference/       # API documentation
+│   │   ├── deployment/          # Deployment guides
+│   │   └── examples/            # Usage examples
+│   └── mint.json               # Mintlify configuration
+│
+├── ⚙️ Configuration
+│   ├── requirements.txt         # Python dependencies
+│   ├── setup.py                # Package setup
+│   ├── Procfile                # Heroku deployment
+│   ├── setup.sh                # Streamlit configuration
+│   └── .gitignore              # Git ignore rules
+│
+└── 📄 Project Files
+    └── README.md               # Project overview (if present)
 ```
 
-## Core Components
+## 🔍 Detailed File Analysis
 
-### 🎯 Main Application (`app.py`)
-
-The heart of the system - a Streamlit web application that provides the user interface for book recommendations.
-
-**Key Functions:**
-- `recommend_book()` - Generates recommendations using k-NN algorithm
-- `fetch_poster()` - Retrieves book cover URLs for visual display
-- Interactive UI components for book selection and results display
-
-```python
-# Core recommendation logic
-def recommend_book(book_name):
-    book_id = np.where(book_pivot.index == book_name)[0][0]
-    distance, suggestion = model.kneighbors(
-        book_pivot.iloc[book_id,:].values.reshape(1,-1), 
-        n_neighbors=6
-    )
-    return books_list, poster_url
-```
-
-### 🧠 ML Pipeline (`Books Recommender.ipynb`)
-
-Jupyter notebook containing the complete machine learning workflow:
-
-**Pipeline Steps:**
-1. **Data Loading** - Import and validate Book Crossing dataset
-2. **Data Cleaning** - Handle missing values and malformed records
-3. **Feature Engineering** - Create user-item interaction matrices
-4. **Model Training** - Train k-Nearest Neighbors model
-5. **Model Serialization** - Save trained models as pickle files
-
-### 📊 Model Artifacts (`artifacts/`)
-
-Pre-trained machine learning components saved for production use:
+### Core Application Files
 
 <AccordionGroup>
-  <Accordion title="model.pkl - Trained k-NN Model">
-    The core recommendation engine trained on user-item interactions using cosine similarity.
+  <Accordion title="📱 app.py - Main Application">
+    **Purpose**: The heart of the Streamlit web application
     
-    **Specifications:**
-    - Algorithm: k-Nearest Neighbors
-    - Similarity Metric: Cosine similarity
-    - Neighbors: 6 (including input book)
-    - Size: ~182KB
-  </Accordion>
-
-  <Accordion title="book_names.pkl - Book Titles">
-    List of all available book titles for the dropdown interface.
-    
-    **Contents:**
-    - 271,379 unique book titles
-    - Normalized and cleaned titles
-    - Size: ~20KB
-  </Accordion>
-
-  <Accordion title="book_pivot.pkl - User-Item Matrix">
-    Pivot table representing user ratings for each book.
-    
-    **Structure:**
-    - Rows: Books (271K)
-    - Columns: Users (278K)
-    - Values: Ratings (0-10 scale)
-    - Sparsity: ~99.98%
-    - Size: ~5.3MB
-  </Accordion>
-
-  <Accordion title="final_rating.pkl - Processed Data">
-    Enhanced dataset with book metadata and image URLs.
-    
-    **Includes:**
-    - Book titles, authors, publishers
-    - Publication years and ISBNs
-    - Cover image URLs (S, M, L sizes)
-    - Size: ~3.8MB
-  </Accordion>
-</AccordionGroup>
-
-### 📚 Dataset (`data/`)
-
-Raw Book Crossing dataset files used for training:
-
-<AccordionGroup>
-  <Accordion title="BX-Books.csv - Book Catalog">
-    Comprehensive book metadata including:
-    - ISBN identifiers
-    - Book titles and authors
-    - Publication years and publishers
-    - Cover image URLs
-    - **Size**: 77.8MB, **Records**: 271,379
-  </Accordion>
-
-  <Accordion title="BX-Users.csv - User Demographics">
-    User information including:
-    - User IDs
-    - Geographic locations
-    - Age information (where available)
-    - **Size**: 12.3MB, **Records**: 278,858
-  </Accordion>
-
-  <Accordion title="BX-Book-Ratings.csv - Rating Data">
-    User-book interaction data:
-    - User IDs and ISBNs
-    - Rating scores (0-10 scale)
-    - Implicit vs explicit feedback
-    - **Size**: 30.7MB, **Records**: 1,149,780
-  </Accordion>
-</AccordionGroup>
-
-### 🎨 Demo Assets (`demo/` & `frontend1.png`)
-
-Visual documentation and screenshots showcasing the application:
-
-- **frontend1.png** - Main application interface
-- **demo/1.png** - Initial interface view
-- **demo/2.png** - Recommendation results display
-- **demo/3.png** - Additional features and interactions
-- **demo/6.jpeg** - Hero image for documentation
-
-### ⚙️ Configuration Files
-
-<AccordionGroup>
-  <Accordion title="requirements.txt - Dependencies">
-    Minimal dependency list:
+    **Key Functions**:
+    ```python path=/C/Users/Nirav/Desktop/rs project/Books-Recommender-System/app.py start=10
+    st.header('Book Recommender System Using Machine Learning')
+    model = pickle.load(open('artifacts/model.pkl','rb'))
+    book_names = pickle.load(open('artifacts/book_names.pkl','rb'))
+    final_rating = pickle.load(open('artifacts/final_rating.pkl','rb'))
+    book_pivot = pickle.load(open('artifacts/book_pivot.pkl','rb'))
     ```
+    
+    **Components**:
+    - Model loading and initialization
+    - User interface creation
+    - Recommendation logic (`recommend_book()` function)
+    - Image fetching (`fetch_poster()` function) 
+    - Result display and formatting
+    
+    **Dependencies**: Streamlit, NumPy, Pickle
+  </Accordion>
+
+  <Accordion title="🤖 Books Recommender.ipynb - ML Training">
+    **Purpose**: Complete machine learning pipeline for model training
+    
+    **Notebook Sections**:
+    1. **Data Loading**: Import and explore datasets
+    2. **Data Preprocessing**: Clean and filter data
+    3. **Feature Engineering**: Create user-item matrices
+    4. **Model Training**: Train k-NN collaborative filtering model
+    5. **Model Evaluation**: Test and validate recommendations
+    6. **Model Persistence**: Save trained artifacts
+    
+    **Key Libraries**: Pandas, NumPy, Scikit-learn, Matplotlib, Seaborn
+    
+    **Output**: Generates all files in `artifacts/` directory
+  </Accordion>
+</AccordionGroup>
+
+### Data Structure
+
+<AccordionGroup>
+  <Accordion title="📊 data/ - Raw Datasets">
+    **Book Crossing Dataset** from Kaggle containing:
+    
+    **BX-Books.csv** (271,379 records):
+    ```csv
+    ISBN,Book-Title,Book-Author,Year-Of-Publication,Publisher,Image-URL-S,Image-URL-M,Image-URL-L
+    0195153448,Classical Mythology,Mark P. O. Morford,2002,Oxford University Press,...
+    ```
+    
+    **BX-Users.csv** (278,858 records):
+    ```csv
+    User-ID,Location,Age
+    1,nyc, new york, usa,
+    2,stockton, california, usa,18
+    ```
+    
+    **BX-Book-Ratings.csv** (1,149,780 records):
+    ```csv
+    User-ID,ISBN,Book-Rating
+    276725,034545104X,0
+    276726,0155061224,5
+    ```
+  </Accordion>
+
+  <Accordion title="🤖 artifacts/ - Pre-trained Models">
+    **Generated by the Jupyter notebook, essential for application runtime**:
+    
+    **model.pkl**: 
+    - Trained k-NN model using scikit-learn
+    - Configured with cosine similarity
+    - Used for finding similar books
+    
+    **book_names.pkl**:
+    - List of all available book titles
+    - Powers the dropdown selection interface
+    - Filtered for quality (50+ ratings minimum)
+    
+    **book_pivot.pkl**:
+    - User-item interaction matrix
+    - Books as rows, users as columns
+    - Sparse matrix for memory efficiency
+    
+    **final_rating.pkl**:
+    - Processed and cleaned rating data
+    - Includes book metadata and cover URLs
+    - Used for recommendation display
+  </Accordion>
+</AccordionGroup>
+
+### Development Structure
+
+<AccordionGroup>
+  <Accordion title="🏗️ src/ - Source Code Modules">
+    **Package Structure**:
+    ```
+    src/
+    ├── __init__.py          # Package initialization
+    └── utils/               # Utility functions
+        └── __init__.py      # Utils initialization
+    ```
+    
+    **Purpose**: 
+    - Modular code organization for development
+    - Reusable utility functions
+    - Package-based imports
+    - Future extensibility
+    
+    **Installation**: Installed via `pip install -e .`
+  </Accordion>
+
+  <Accordion title="📸 demo/ - Visual Assets">
+    **Screenshot Collection**:
+    - **1.png**: Main application interface showing recommendations
+    - **2.png**: Book selection dropdown interface
+    - **3.png**: Alternative view of the recommendation system
+    - **6.jpeg**: Additional demonstration screenshot
+    
+    **Usage**:
+    - Documentation illustrations
+    - Demo and presentation materials
+    - UI/UX reference for developers
+    - Marketing and showcase content
+  </Accordion>
+</AccordionGroup>
+
+### Configuration Files
+
+<AccordionGroup>
+  <Accordion title="⚙️ requirements.txt - Dependencies">
+    **Current Dependencies**:
+    ```txt path=/C/Users/Nirav/Desktop/rs project/Books-Recommender-System/requirements.txt start=1
+    ### dependency
     streamlit
     numpy
-    -e .  # Local package installation
+    
+    ### local packages -
+    -e . 
     ```
+    
+    **Purpose**:
+    - Defines Python package requirements
+    - Ensures consistent environments
+    - Enables easy installation via `pip install -r requirements.txt`
+    - Includes local package in editable mode
   </Accordion>
 
-  <Accordion title="setup.py - Package Configuration">
-    Python package setup with:
-    - Package metadata and versioning
-    - Author information
-    - Dependency specifications
-    - Repository URLs
+  <Accordion title="📦 setup.py - Package Configuration">
+    **Package Metadata**:
+    ```python path=/C/Users/Nirav/Desktop/rs project/Books-Recommender-System/setup.py start=7
+    REPO_NAME = "Books-Recommender-System-Using-Machine-Learning"
+    AUTHOR_USER_NAME = "MELLOxProg"
+    SRC_REPO = "src"
+    LIST_OF_REQUIREMENTS = ['streamlit', 'numpy']
+    ```
+    
+    **Configuration**:
+    - Package name and version information
+    - Author details and repository links
+    - Dependency management
+    - Installation instructions
   </Accordion>
 
-  <Accordion title="Procfile - Heroku Deployment">
-    Heroku-specific configuration:
-    ```
+  <Accordion title="🚀 Deployment Files">
+    **Procfile** (Heroku):
+    ```txt path=/C/Users/Nirav/Desktop/rs project/Books-Recommender-System/Procfile start=1
     web: sh setup.sh && streamlit run app.py
     ```
-  </Accordion>
-
-  <Accordion title="setup.sh - Streamlit Configuration">
-    Environment setup script that creates Streamlit configuration:
-    - Server port configuration
-    - CORS settings
-    - Headless mode for production
+    
+    **setup.sh** (Streamlit Configuration):
+    - Server configuration for deployment
+    - Port and host settings
+    - Production optimizations
+    
+    **Purpose**: Enable one-click deployment to cloud platforms
   </Accordion>
 </AccordionGroup>
 
-## Architecture Patterns
+## 🔗 File Dependencies
 
-### 🏗️ Layered Architecture
+### Runtime Dependencies
 
-The system follows a clean layered architecture:
+<Steps>
+  <Step title="Application Startup">
+    `app.py` loads pre-trained models from `artifacts/`
+    ```python path=null start=null
+    # Critical files loaded at startup
+    model.pkl → recommendation_engine
+    book_names.pkl → dropdown_options
+    book_pivot.pkl → similarity_matrix
+    final_rating.pkl → metadata_lookup
+    ```
+  </Step>
+  
+  <Step title="Model Training Pipeline">
+    `Books Recommender.ipynb` processes raw data to create artifacts
+    ```python path=null start=null
+    # Training pipeline flow
+    data/*.csv → preprocessing → model_training → artifacts/*.pkl
+    ```
+  </Step>
+  
+  <Step title="Package Installation">
+    `setup.py` and `requirements.txt` manage dependencies
+    ```python path=null start=null
+    # Installation chain
+    setup.py → package_definition
+    requirements.txt → dependency_installation
+    src/ → local_package_modules
+    ```
+  </Step>
+</Steps>
 
-```
-┌─────────────────────────────────────┐
-│           Presentation Layer        │
-│         (Streamlit UI)              │
-├─────────────────────────────────────┤
-│           Application Layer         │
-│      (Recommendation Logic)         │
-├─────────────────────────────────────┤
-│           Data Layer                │
-│     (Model Artifacts & Data)        │
-└─────────────────────────────────────┘
-```
-
-### 🔄 Data Flow
+### Data Flow Architecture
 
 ```mermaid
 graph TD
-    A[User Selects Book] --> B[Recommendation Engine]
-    B --> C[k-NN Model]
-    C --> D[User-Item Matrix]
-    D --> E[Similarity Calculation]
-    E --> F[Top 5 Recommendations]
-    F --> G[Image Retrieval]
-    G --> H[Display Results]
+    A[Raw Data: data/*.csv] --> B[Jupyter Notebook: Training]
+    B --> C[Artifacts: models/*.pkl]
+    C --> D[Streamlit App: app.py]
+    D --> E[User Interface]
+    
+    F[requirements.txt] --> G[Environment Setup]
+    H[setup.py] --> G
+    G --> D
+    
+    I[demo/*.png] --> J[Documentation]
+    K[docs/*.mdx] --> J
 ```
 
-### 📦 Package Structure
+## 🛠️ Development Workflow
 
-The `src/` directory follows Python package conventions:
+### Local Development
 
-```
-src/
-├── __init__.py           # Package initialization
-└── utils/
-    └── __init__.py       # Utility module initialization
-```
+<Steps>
+  <Step title="Environment Setup">
+    ```bash path=null start=null
+    # Clone and setup
+    git clone https://github.com/MELLOxProg/Books-Recommender-System.git
+    cd Books-Recommender-System
+    
+    # Install dependencies
+    pip install -r requirements.txt
+    ```
+  </Step>
+  
+  <Step title="Model Training (if needed)">
+    ```bash path=null start=null
+    # Run Jupyter notebook
+    jupyter notebook "Books Recommender.ipynb"
+    # Execute all cells to generate artifacts/
+    ```
+  </Step>
+  
+  <Step title="Application Development">
+    ```bash path=null start=null
+    # Run development server
+    streamlit run app.py
+    
+    # Access at http://localhost:8501
+    ```
+  </Step>
+</Steps>
 
-## File Size Analysis
+### File Modification Guidelines
 
 <CardGroup cols={2}>
-  <Card title="Model Files" icon="database">
-    **Total**: ~9.3MB
-    - Optimized for production deployment
-    - Efficient serialization with pickle
+  <Card title="🔧 Core Application" icon="wrench">
+    **app.py modifications:**
+    - UI/UX improvements
+    - Feature additions
+    - Performance optimizations
+    - Error handling enhancements
   </Card>
-  <Card title="Dataset Files" icon="file">
-    **Total**: ~120.8MB
-    - Raw training data
-    - Can be excluded from production deployments
+  <Card title="🤖 ML Pipeline" icon="brain">
+    **Notebook modifications:**
+    - Algorithm improvements
+    - Data preprocessing changes
+    - Model parameter tuning
+    - Evaluation metrics addition
   </Card>
-  <Card title="Application Code" icon="code">
-    **Total**: ~15KB
-    - Minimal, focused codebase
-    - Easy to maintain and extend
+  <Card title="📊 Data Updates" icon="chart-bar">
+    **data/ directory:**
+    - Dataset version updates
+    - Additional data sources
+    - Data quality improvements
+    - Schema modifications
   </Card>
-  <Card title="Documentation" icon="book">
-    **Total**: ~2MB
-    - Comprehensive Mintlify docs
-    - Screenshots and examples
+  <Card title="⚙️ Configuration" icon="cog">
+    **Config file changes:**
+    - Dependency updates
+    - Deployment settings
+    - Environment variables
+    - Build configurations
   </Card>
 </CardGroup>
 
-## Development Workflow
+## 📦 Deployment Considerations
 
-### 🔄 Typical Development Process
+### File Size Management
 
-1. **Data Exploration** - Use Jupyter notebook for analysis
-2. **Model Training** - Generate artifacts in notebook
-3. **Application Development** - Build Streamlit interface
-4. **Testing** - Local testing and validation
-5. **Deployment** - Deploy to chosen platform
+<AccordionGroup>
+  <Accordion title="📊 Large Files">
+    **artifacts/*.pkl files** can be large (50-200MB each):
+    - Use Git LFS for version control
+    - Consider cloud storage for deployment
+    - Implement lazy loading where possible
+    - Compress models when feasible
+  </Accordion>
 
-### 🚀 Production Considerations
+  <Accordion title="💾 Memory Usage">
+    **Runtime memory requirements**:
+    - Model loading: ~500MB RAM
+    - Data processing: Additional 200MB
+    - Streamlit overhead: ~100MB
+    - Total recommended: 1GB+ RAM
+  </Accordion>
 
-- **Model Artifacts**: Pre-trained and cached for performance
-- **Memory Optimization**: Efficient data structures and caching
-- **Scalability**: Stateless design for horizontal scaling
-- **Monitoring**: Health checks and performance metrics
+  <Accordion title="🌐 Network Dependencies">
+    **External resources**:
+    - Book cover images from Amazon URLs
+    - Potential CDN requirements
+    - Fallback strategies for missing images
+    - Caching considerations
+  </Accordion>
+</AccordionGroup>
 
-This structure provides a solid foundation for both development and production deployment of the Book Recommender System.
+### Security Considerations
+
+<Warning>
+**Sensitive Files**: Ensure the following are properly managed:
+- No API keys or secrets in repository
+- User data privacy compliance
+- Secure model artifact storage
+- Safe external image loading
+</Warning>
+
+## 📚 Next Steps
+
+<CardGroup cols={2}>
+  <Card title="🚀 Quick Start" icon="rocket" href="/quickstart">
+    Get the system running in minutes
+  </Card>
+  <Card title="🔧 Development Guide" icon="wrench" href="/development-setup">
+    Set up your development environment
+  </Card>
+  <Card title="🤖 ML Pipeline" icon="brain" href="/machine-learning-pipeline">
+    Understand the training process
+  </Card>
+  <Card title="🌐 Deploy" icon="globe" href="/deployment/overview">
+    Deploy your own instance
+  </Card>
+</CardGroup>
+
+---
+
+<Info>
+Understanding the project structure is key to effective development and customization. Each component serves a specific purpose in delivering personalized book recommendations! 📚✨
+</Info>

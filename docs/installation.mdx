@@ -1,0 +1,470 @@
+---
+title: 'Installation Guide'
+description: 'Comprehensive installation instructions for all platforms and environments'
+---
+
+## System Requirements
+
+<CardGroup cols={2}>
+  <Card title="Operating System" icon="desktop">
+    - **Windows**: Windows 10/11 (64-bit)
+    - **macOS**: macOS 10.14+ (Mojave or later)
+    - **Linux**: Ubuntu 18.04+, CentOS 7+, or equivalent
+  </Card>
+  <Card title="Hardware" icon="microchip">
+    - **RAM**: Minimum 4GB, Recommended 8GB+
+    - **Storage**: 2GB free space for data and models
+    - **CPU**: Multi-core processor recommended
+  </Card>
+</CardGroup>
+
+## Python Environment
+
+<Tabs>
+  <Tab title="Python 3.9+ (Recommended)">
+    ```bash path=null start=null
+    # Check Python version
+    python --version
+    # Should show: Python 3.9.x or higher
+    
+    # Alternative check
+    python3 --version
+    ```
+    
+    **Why Python 3.9+?**
+    - Optimal compatibility with all dependencies
+    - Better performance with NumPy operations
+    - Full Streamlit feature support
+  </Tab>
+  
+  <Tab title="Python 3.7+ (Minimum)">
+    ```bash path=null start=null
+    # Minimum supported version
+    python --version
+    # Should show: Python 3.7.x or higher
+    ```
+    
+    **Note**: Some features may have limited functionality on older versions.
+  </Tab>
+</Tabs>
+
+## Installation Methods
+
+### Method 1: Quick Setup (Recommended)
+
+<Steps>
+  <Step title="Clone Repository">
+    ```bash path=null start=null
+    git clone https://github.com/MELLOxProg/Books-Recommender-System.git
+    cd Books-Recommender-System
+    ```
+  </Step>
+  
+  <Step title="Create Virtual Environment">
+    <Tabs>
+      <Tab title="Windows (Command Prompt)">
+        ```cmd path=null start=null
+        python -m venv book-recommender
+        book-recommender\Scripts\activate
+        ```
+      </Tab>
+      
+      <Tab title="Windows (PowerShell)">
+        ```powershell path=null start=null
+        python -m venv book-recommender
+        .\book-recommender\Scripts\Activate.ps1
+        ```
+      </Tab>
+      
+      <Tab title="macOS/Linux">
+        ```bash path=null start=null
+        python3 -m venv book-recommender
+        source book-recommender/bin/activate
+        ```
+      </Tab>
+    </Tabs>
+  </Step>
+  
+  <Step title="Install Dependencies">
+    ```bash path=null start=null
+    # Upgrade pip first
+    pip install --upgrade pip
+    
+    # Install project dependencies
+    pip install -r requirements.txt
+    ```
+  </Step>
+  
+  <Step title="Verify Installation">
+    ```bash path=null start=null
+    # Test basic imports
+    python -c "import streamlit, numpy; print('✅ Dependencies installed successfully!')"
+    
+    # Check model files
+    ls artifacts/
+    ```
+  </Step>
+</Steps>
+
+### Method 2: Development Setup
+
+For contributors and developers who want to modify the system:
+
+<Steps>
+  <Step title="Fork and Clone">
+    1. Fork the repository on GitHub
+    2. Clone your fork:
+    ```bash path=null start=null
+    git clone https://github.com/YOUR-USERNAME/Books-Recommender-System.git
+    cd Books-Recommender-System
+    ```
+  </Step>
+  
+  <Step title="Development Environment">
+    ```bash path=null start=null
+    # Create development environment
+    python -m venv book-recommender-dev
+    
+    # Activate environment
+    source book-recommender-dev/bin/activate  # macOS/Linux
+    # or
+    book-recommender-dev\Scripts\activate     # Windows
+    ```
+  </Step>
+  
+  <Step title="Install in Development Mode">
+    ```bash path=null start=null
+    # Install with development dependencies
+    pip install -e .
+    pip install jupyter matplotlib seaborn
+    
+    # Install pre-commit hooks (optional)
+    pip install pre-commit
+    pre-commit install
+    ```
+  </Step>
+  
+  <Step title="Run Development Server">
+    ```bash path=null start=null
+    # Run with auto-reload
+    streamlit run app.py --server.runOnSave=true
+    ```
+  </Step>
+</Steps>
+
+### Method 3: Docker Installation
+
+For containerized deployment:
+
+<Steps>
+  <Step title="Install Docker">
+    - **Windows/macOS**: [Docker Desktop](https://www.docker.com/products/docker-desktop)
+    - **Linux**: [Docker Engine](https://docs.docker.com/engine/install/)
+  </Step>
+  
+  <Step title="Create Dockerfile">
+    ```dockerfile path=null start=null
+    FROM python:3.9-slim
+    
+    WORKDIR /app
+    
+    COPY requirements.txt .
+    RUN pip install --no-cache-dir -r requirements.txt
+    
+    COPY . .
+    
+    EXPOSE 8501
+    
+    CMD ["streamlit", "run", "app.py", "--server.address", "0.0.0.0"]
+    ```
+  </Step>
+  
+  <Step title="Build and Run">
+    ```bash path=null start=null
+    # Build image
+    docker build -t book-recommender .
+    
+    # Run container
+    docker run -p 8501:8501 book-recommender
+    ```
+  </Step>
+</Steps>
+
+## Data and Model Setup
+
+### Option 1: Use Pre-trained Models (Fastest)
+
+If the repository includes pre-trained models:
+
+```bash path=null start=null
+# Verify model files exist
+ls -la artifacts/
+# Should show:
+# model.pkl (trained k-NN model)
+# book_names.pkl (book titles list)
+# book_pivot.pkl (user-item matrix)
+# final_rating.pkl (processed ratings data)
+```
+
+### Option 2: Train Models from Scratch
+
+If model files are missing or you want to retrain:
+
+<Steps>
+  <Step title="Verify Data Files">
+    ```bash path=null start=null
+    ls -la data/
+    # Should show:
+    # BX-Books.csv
+    # BX-Users.csv  
+    # BX-Book-Ratings.csv
+    ```
+  </Step>
+  
+  <Step title="Run Training Notebook">
+    ```bash path=null start=null
+    # Start Jupyter
+    jupyter notebook "Books Recommender.ipynb"
+    ```
+    
+    Execute all cells in the notebook to:
+    - Load and preprocess data
+    - Apply filtering criteria
+    - Train the k-NN model
+    - Generate pickle files
+  </Step>
+  
+  <Step title="Verify Model Generation">
+    ```bash path=null start=null
+    # Check generated files
+    ls -la artifacts/
+    python -c "import pickle; print('Model size:', len(pickle.load(open('artifacts/model.pkl', 'rb')).kneighbors_graph(n_neighbors=6)))"
+    ```
+  </Step>
+</Steps>
+
+## Platform-Specific Instructions
+
+<Tabs>
+  <Tab title="Windows">
+    ### Windows-Specific Setup
+    
+    **Using Command Prompt:**
+    ```cmd path=null start=null
+    # Clone repository
+    git clone https://github.com/MELLOxProg/Books-Recommender-System.git
+    cd Books-Recommender-System
+    
+    # Create virtual environment
+    python -m venv venv
+    venv\Scripts\activate
+    
+    # Install dependencies
+    pip install -r requirements.txt
+    
+    # Run application
+    streamlit run app.py
+    ```
+    
+    **Common Windows Issues:**
+    - **PowerShell Execution Policy**: Run `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser`
+    - **Long Path Support**: Enable in Windows settings or use `\\?\` prefix for paths
+    - **Antivirus**: Add project folder to exclusions if needed
+  </Tab>
+  
+  <Tab title="macOS">
+    ### macOS-Specific Setup
+    
+    **Using Homebrew (Recommended):**
+    ```bash path=null start=null
+    # Install Python via Homebrew
+    brew install python
+    
+    # Clone and setup
+    git clone https://github.com/MELLOxProg/Books-Recommender-System.git
+    cd Books-Recommender-System
+    
+    # Create virtual environment
+    python3 -m venv venv
+    source venv/bin/activate
+    
+    # Install dependencies
+    pip install -r requirements.txt
+    
+    # Run application
+    streamlit run app.py
+    ```
+    
+    **macOS Considerations:**
+    - Use `python3` and `pip3` commands explicitly
+    - May need Xcode command line tools: `xcode-select --install`
+    - For M1/M2 Macs, ensure all packages have ARM64 support
+  </Tab>
+  
+  <Tab title="Linux">
+    ### Linux-Specific Setup
+    
+    **Ubuntu/Debian:**
+    ```bash path=null start=null
+    # Install Python and pip
+    sudo apt update
+    sudo apt install python3 python3-pip python3-venv git
+    
+    # Clone repository
+    git clone https://github.com/MELLOxProg/Books-Recommender-System.git
+    cd Books-Recommender-System
+    
+    # Setup virtual environment
+    python3 -m venv venv
+    source venv/bin/activate
+    
+    # Install dependencies
+    pip install -r requirements.txt
+    
+    # Run application
+    streamlit run app.py
+    ```
+    
+    **CentOS/RHEL:**
+    ```bash path=null start=null
+    # Install Python and Git
+    sudo yum install python3 python3-pip git
+    
+    # Follow same setup process as Ubuntu
+    ```
+  </Tab>
+</Tabs>
+
+## Verification and Testing
+
+### Basic Functionality Test
+
+```bash path=null start=null
+# Test 1: Import verification
+python -c "
+import streamlit as st
+import numpy as np
+import pickle
+print('✅ All imports successful')
+"
+
+# Test 2: Model loading
+python -c "
+import pickle
+model = pickle.load(open('artifacts/model.pkl', 'rb'))
+books = pickle.load(open('artifacts/book_names.pkl', 'rb'))
+print(f'✅ Model loaded: {len(books)} books available')
+"
+
+# Test 3: App startup (non-blocking)
+timeout 10s streamlit run app.py --server.headless=true || echo "✅ App starts correctly"
+```
+
+### Performance Test
+
+```bash path=null start=null
+# Memory usage check
+python -c "
+import psutil
+import pickle
+process = psutil.Process()
+initial_memory = process.memory_info().rss / 1024 / 1024
+
+# Load models
+model = pickle.load(open('artifacts/model.pkl', 'rb'))
+books = pickle.load(open('artifacts/book_names.pkl', 'rb'))
+
+final_memory = process.memory_info().rss / 1024 / 1024
+print(f'Memory usage: {final_memory - initial_memory:.1f} MB')
+"
+```
+
+## Troubleshooting Installation Issues
+
+<AccordionGroup>
+  <Accordion title="SSL Certificate Errors">
+    **Problem**: SSL errors when downloading packages
+    
+    **Solutions**:
+    ```bash path=null start=null
+    # Option 1: Upgrade certificates
+    pip install --upgrade certifi
+    
+    # Option 2: Use trusted hosts
+    pip install -r requirements.txt --trusted-host pypi.org --trusted-host pypi.python.org
+    
+    # Option 3: Corporate networks
+    pip install -r requirements.txt --proxy http://your-proxy:port
+    ```
+  </Accordion>
+  
+  <Accordion title="Permission Denied Errors">
+    **Problem**: Permission issues during installation
+    
+    **Solutions**:
+    ```bash path=null start=null
+    # Linux/macOS - avoid sudo, use --user flag
+    pip install --user -r requirements.txt
+    
+    # Windows - run as administrator or check folder permissions
+    icacls "C:\path\to\project" /grant Everyone:F /T
+    ```
+  </Accordion>
+  
+  <Accordion title="Package Conflicts">
+    **Problem**: Dependency version conflicts
+    
+    **Solutions**:
+    ```bash path=null start=null
+    # Create fresh environment
+    python -m venv fresh-env
+    source fresh-env/bin/activate  # or activate.bat on Windows
+    
+    # Install specific versions
+    pip install streamlit==1.28.0 numpy==1.24.0
+    
+    # Check for conflicts
+    pip check
+    ```
+  </Accordion>
+  
+  <Accordion title="Large File Download Issues">
+    **Problem**: Model files or data downloads fail
+    
+    **Solutions**:
+    ```bash path=null start=null
+    # Use Git LFS for large files
+    git lfs install
+    git lfs pull
+    
+    # Alternative: Manual download
+    wget https://raw.githubusercontent.com/MELLOxProg/Books-Recommender-System/main/artifacts/model.pkl
+    
+    # Verify file integrity
+    python -c "import pickle; pickle.load(open('artifacts/model.pkl', 'rb')); print('✅ File valid')"
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="🚀 Quick Start" icon="rocket" href="/quickstart">
+    Jump straight into using the system
+  </Card>
+  <Card title="🔧 Development Setup" icon="wrench" href="/development-setup">
+    Set up for development and customization
+  </Card>
+  <Card title="🌐 Deploy to Cloud" icon="cloud" href="/deployment/overview">
+    Deploy your installation online
+  </Card>
+  <Card title="❓ Get Help" icon="question" href="/troubleshooting">
+    Common issues and solutions
+  </Card>
+</CardGroup>
+
+---
+
+<Success>
+**Installation Complete!** 🎉 Your Book Recommender System is ready to use. Run `streamlit run app.py` to start discovering book recommendations.
+</Success>

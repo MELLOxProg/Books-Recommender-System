@@ -1,0 +1,526 @@
+---
+title: 'Development Setup'
+description: 'Complete guide for setting up a development environment for the Book Recommender System'
+---
+
+## Overview
+
+Set up your development environment to contribute to, customize, or extend the Book Recommender System. This guide covers everything from basic setup to advanced development workflows.
+
+<img src="/frontend1.png" alt="Development Environment" />
+
+## 🛠️ Prerequisites
+
+<CardGroup cols={3}>
+  <Card title="🐍 Python 3.9+" icon="python">
+    Latest Python version for optimal compatibility
+  </Card>
+  <Card title="📂 Git" icon="git-branch">
+    Version control for managing code changes
+  </Card>
+  <Card title="💻 Code Editor" icon="code">
+    VS Code, PyCharm, or your preferred IDE
+  </Card>
+</CardGroup>
+
+## 🚀 Quick Development Setup
+
+<Steps>
+  <Step title="Fork & Clone Repository">
+    ```bash path=null start=null
+    # Fork the repository on GitHub first, then:
+    git clone https://github.com/YOUR-USERNAME/Books-Recommender-System.git
+    cd Books-Recommender-System
+    
+    # Add upstream remote
+    git remote add upstream https://github.com/YourUsername/Books-Recommender-System.git
+    ```
+  </Step>
+
+  <Step title="Create Development Environment">
+    ```bash path=null start=null
+    # Create virtual environment
+    python -m venv book-recommender-dev
+    
+    # Activate environment
+    # Windows:
+    book-recommender-dev\Scripts\activate
+    # macOS/Linux:
+    source book-recommender-dev/bin/activate
+    ```
+  </Step>
+
+  <Step title="Install Development Dependencies">
+    ```bash path=null start=null
+    # Upgrade pip first
+    pip install --upgrade pip
+    
+    # Install project in editable mode
+    pip install -e .
+    
+    # Install development tools
+    pip install jupyter matplotlib seaborn
+    pip install black flake8 pytest  # Code quality tools
+    ```
+  </Step>
+
+  <Step title="Verify Installation">
+    ```bash path=null start=null
+    # Test basic functionality
+    python -c "import streamlit, numpy; print('✅ Core dependencies installed')"
+    
+    # Verify model files exist
+    ls artifacts/ || echo "⚠️  Need to generate model files"
+    
+    # Test application startup
+    streamlit run app.py --server.headless=true
+    ```
+  </Step>
+</Steps>
+
+## 🔧 Development Tools
+
+### Essential VS Code Extensions
+
+<AccordionGroup>
+  <Accordion title="Python Development">
+    **Recommended Extensions:**
+    - **Python** (Microsoft) - Core Python support
+    - **Pylance** - Advanced Python language features  
+    - **Python Docstring Generator** - Auto-generate docstrings
+    - **autoDocstring** - Smart docstring completion
+  </Accordion>
+
+  <Accordion title="Code Quality">
+    **Code Formatting & Linting:**
+    - **Black Formatter** - Consistent code formatting
+    - **Flake8** - Code style and error checking
+    - **isort** - Import statement organization
+    - **GitLens** - Enhanced Git integration
+  </Accordion>
+
+  <Accordion title="Data Science">
+    **ML/Data Tools:**
+    - **Jupyter** - Notebook support in VS Code
+    - **Python Environment Manager** - Virtual env management
+    - **Rainbow CSV** - Better CSV file viewing
+    - **Data Viewer** - Pandas DataFrame visualization
+  </Accordion>
+</AccordionGroup>
+
+### Development Configuration
+
+```json path=null start=null
+// .vscode/settings.json
+{
+    "python.defaultInterpreterPath": "./book-recommender-dev/bin/python",
+    "python.formatting.provider": "black",
+    "python.linting.enabled": true,
+    "python.linting.flake8Enabled": true,
+    "python.linting.pylintEnabled": false,
+    "files.exclude": {
+        "**/__pycache__": true,
+        "**/*.pyc": true,
+        ".pytest_cache": true
+    }
+}
+```
+
+## 🧪 Model Development Workflow
+
+### Training New Models
+
+<Steps>
+  <Step title="Data Preparation">
+    ```bash path=null start=null
+    # Ensure data files are present
+    ls -la data/
+    # Should show: BX-Books.csv, BX-Users.csv, BX-Book-Ratings.csv
+    
+    # Verify file integrity
+    python -c "
+    import pandas as pd
+    books = pd.read_csv('data/BX-Books.csv', sep=';', encoding='latin-1', error_bad_lines=False)
+    print(f'Books loaded: {len(books)} records')
+    "
+    ```
+  </Step>
+
+  <Step title="Run Training Notebook">
+    ```bash path=null start=null
+    # Start Jupyter Lab/Notebook
+    jupyter lab
+    # or
+    jupyter notebook
+    
+    # Open "Books Recommender.ipynb"
+    # Execute all cells in order
+    ```
+    
+    **Key Training Steps:**
+    - Data loading and exploration
+    - Data cleaning and preprocessing  
+    - User and book filtering
+    - Matrix creation and optimization
+    - Model training with k-NN
+    - Model evaluation and validation
+    - Artifact generation and saving
+  </Step>
+
+  <Step title="Validate Generated Models">
+    ```bash path=null start=null
+    # Check artifact files
+    ls -la artifacts/
+    
+    # Test model functionality
+    python -c "
+    import pickle
+    import numpy as np
+    
+    # Load and test model
+    model = pickle.load(open('artifacts/model.pkl', 'rb'))
+    book_pivot = pickle.load(open('artifacts/book_pivot.pkl', 'rb'))
+    
+    # Test recommendation
+    book_vector = book_pivot.iloc[0,:].values.reshape(1,-1)
+    distances, indices = model.kneighbors(book_vector, n_neighbors=6)
+    print('✅ Model validation successful')
+    print(f'Sample recommendations: {indices[0][:3]}')
+    "
+    ```
+  </Step>
+</Steps>
+
+### Model Optimization
+
+<AccordionGroup>
+  <Accordion title="Performance Tuning">
+    **Optimization Techniques:**
+    ```python path=null start=null
+    # Memory optimization
+    import numpy as np
+    from scipy.sparse import csr_matrix
+    
+    # Use float32 instead of float64
+    book_pivot = book_pivot.astype(np.float32)
+    
+    # Convert to sparse matrix for large datasets
+    book_sparse = csr_matrix(book_pivot.values)
+    
+    # Optimize k-NN parameters
+    from sklearn.neighbors import NearestNeighbors
+    model = NearestNeighbors(
+        algorithm='brute',      # Most accurate for small-medium datasets
+        metric='cosine',        # Best for sparse, high-dimensional data
+        n_jobs=-1              # Use all available cores
+    )
+    ```
+  </Accordion>
+
+  <Accordion title="Alternative Algorithms">
+    **Experiment with different approaches:**
+    ```python path=null start=null
+    # Matrix Factorization approach
+    from sklearn.decomposition import TruncatedSVD
+    
+    svd = TruncatedSVD(n_components=50, random_state=42)
+    user_factors = svd.fit_transform(book_pivot.T)
+    book_factors = svd.components_.T
+    
+    # Neural Collaborative Filtering (advanced)
+    # Requires TensorFlow/PyTorch implementation
+    
+    # Hybrid approaches combining content + collaborative
+    ```
+  </Accordion>
+
+  <Accordion title="Evaluation Metrics">
+    **Model Quality Assessment:**
+    ```python path=null start=null
+    # Recommendation diversity
+    def calculate_diversity(recommendations):
+        unique_items = set(recommendations)
+        return len(unique_items) / len(recommendations)
+    
+    # Coverage - what % of catalog is recommended
+    def calculate_coverage(all_recommendations, catalog_size):
+        unique_recommended = set(all_recommendations)
+        return len(unique_recommended) / catalog_size
+    
+    # Precision@K for known good recommendations
+    def precision_at_k(recommended, relevant, k=5):
+        recommended_k = recommended[:k]
+        relevant_set = set(relevant)
+        return len(set(recommended_k) & relevant_set) / k
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## 🎨 Frontend Development
+
+### Streamlit Customization
+
+<AccordionGroup>
+  <Accordion title="UI/UX Improvements">
+    **Enhanced Interface Elements:**
+    ```python path=null start=null
+    import streamlit as st
+    
+    # Custom CSS styling
+    st.markdown("""
+    <style>
+    .main-header {
+        font-size: 3rem;
+        color: #1E40AF;
+        text-align: center;
+        margin-bottom: 2rem;
+    }
+    
+    .recommendation-card {
+        border: 1px solid #e1e5e9;
+        border-radius: 8px;
+        padding: 1rem;
+        margin: 0.5rem;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    </style>
+    """, unsafe_allow_html=True)
+    
+    # Improved loading states
+    with st.spinner('🔍 Finding perfect recommendations...'):
+        recommendations = recommend_book(selected_book)
+    
+    # Better error handling
+    if not recommendations:
+        st.error("😔 No recommendations found. Try a different book!")
+        st.info("💡 Tip: Popular books usually give better results.")
+    ```
+  </Accordion>
+
+  <Accordion title="Advanced Features">
+    **Additional Functionality:**
+    ```python path=null start=null
+    # Recommendation confidence scores
+    def get_recommendation_confidence(distances):
+        # Convert distances to confidence scores
+        confidences = 1 - distances[0][1:]  # Exclude self-match
+        return confidences
+    
+    # Book metadata display
+    def display_book_info(book_title, final_rating):
+        book_info = final_rating[final_rating['title'] == book_title].iloc[0]
+        
+        col1, col2 = st.columns([1, 2])
+        with col1:
+            st.image(book_info['image_url'], width=150)
+        with col2:
+            st.write(f"**Author:** {book_info['author']}")
+            st.write(f"**Publisher:** {book_info.get('publisher', 'N/A')}")
+            st.write(f"**Year:** {book_info.get('year', 'N/A')}")
+    
+    # User feedback collection
+    if st.button("👍 This recommendation was helpful!"):
+        # Log positive feedback (implement analytics)
+        st.success("Thanks for the feedback!")
+    ```
+  </Accordion>
+
+  <Accordion title="Performance Optimization">
+    **Streamlit Optimization:**
+    ```python path=null start=null
+    # Caching for better performance
+    @st.cache_data
+    def load_book_metadata():
+        return pickle.load(open('artifacts/final_rating.pkl', 'rb'))
+    
+    @st.cache_resource
+    def load_recommendation_model():
+        model = pickle.load(open('artifacts/model.pkl', 'rb'))
+        book_pivot = pickle.load(open('artifacts/book_pivot.pkl', 'rb'))
+        return model, book_pivot
+    
+    # Session state for user preferences
+    if 'favorite_genres' not in st.session_state:
+        st.session_state.favorite_genres = []
+    
+    # Lazy loading for large datasets
+    @st.cache_data
+    def get_book_names_chunk(start_idx, chunk_size=1000):
+        book_names = pickle.load(open('artifacts/book_names.pkl', 'rb'))
+        return book_names[start_idx:start_idx + chunk_size]
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## 🧪 Testing & Quality Assurance
+
+### Test Setup
+
+```bash path=null start=null
+# Install testing dependencies
+pip install pytest pytest-cov pytest-mock
+
+# Create test directory structure
+mkdir tests
+mkdir tests/unit tests/integration
+touch tests/__init__.py tests/conftest.py
+```
+
+### Unit Tests
+
+```python path=null start=null
+# tests/test_recommendations.py
+import pytest
+import numpy as np
+import pickle
+from unittest.mock import patch, mock_open
+
+def test_model_loading():
+    """Test that model files load correctly"""
+    with patch('pickle.load') as mock_pickle:
+        mock_pickle.return_value = "mock_model"
+        # Test model loading logic
+        assert True  # Replace with actual test
+
+def test_recommendation_generation():
+    """Test recommendation function"""
+    # Mock data
+    mock_pivot = pd.DataFrame(np.random.rand(100, 50))
+    mock_model = MockNearestNeighbors()
+    
+    # Test recommendation logic
+    result = generate_recommendations(mock_model, mock_pivot, "test_book")
+    assert len(result) == 5
+    assert all(isinstance(book, str) for book in result)
+
+class MockNearestNeighbors:
+    def kneighbors(self, query, n_neighbors=6):
+        distances = np.random.rand(1, n_neighbors)
+        indices = np.random.randint(0, 100, (1, n_neighbors))
+        return distances, indices
+```
+
+### Integration Tests
+
+```python path=null start=null
+# tests/test_app_integration.py
+import streamlit as st
+from streamlit.testing.v1 import AppTest
+
+def test_app_loads():
+    """Test that the Streamlit app loads without errors"""
+    app_test = AppTest.from_file("app.py")
+    app_test.run()
+    
+    assert not app_test.exception
+    assert len(app_test.selectbox) > 0  # Book selection dropdown exists
+
+def test_recommendation_flow():
+    """Test complete recommendation workflow"""
+    app_test = AppTest.from_file("app.py")
+    app_test.run()
+    
+    # Select a book
+    app_test.selectbox[0].select("1984")
+    
+    # Click recommendation button
+    app_test.button[0].click()
+    
+    # Check that recommendations appear
+    assert len(app_test.columns) == 5  # 5 recommendation columns
+```
+
+### Running Tests
+
+```bash path=null start=null
+# Run all tests
+pytest
+
+# Run with coverage
+pytest --cov=src --cov-report=html
+
+# Run specific test file
+pytest tests/test_recommendations.py -v
+
+# Run tests with detailed output
+pytest -v --tb=short
+```
+
+## 🚀 Development Workflow
+
+### Git Workflow
+
+<Steps>
+  <Step title="Feature Development">
+    ```bash path=null start=null
+    # Create feature branch
+    git checkout -b feature/improve-recommendations
+    
+    # Make changes and commit
+    git add .
+    git commit -m "feat: improve recommendation algorithm accuracy"
+    
+    # Push to your fork
+    git push origin feature/improve-recommendations
+    ```
+  </Step>
+
+  <Step title="Code Quality Checks">
+    ```bash path=null start=null
+    # Format code
+    black . --line-length 88
+    
+    # Check code style
+    flake8 . --max-line-length 88 --ignore E203,W503
+    
+    # Sort imports
+    isort . --profile black
+    
+    # Run tests
+    pytest
+    ```
+  </Step>
+
+  <Step title="Pull Request">
+    - Create pull request on GitHub
+    - Ensure all tests pass
+    - Add clear description of changes
+    - Request review from maintainers
+  </Step>
+</Steps>
+
+### Local Development Server
+
+```bash path=null start=null
+# Development server with auto-reload
+streamlit run app.py --server.runOnSave=true --server.port 8501
+
+# Debug mode with detailed errors
+streamlit run app.py --logger.level=debug
+
+# External access for testing on different devices
+streamlit run app.py --server.address=0.0.0.0 --server.port=8501
+```
+
+## 📚 Next Steps
+
+<CardGroup cols={2}>
+  <Card title="🔬 Advanced ML" icon="flask" href="/machine-learning-pipeline">
+    Explore advanced machine learning techniques and optimizations
+  </Card>
+  <Card title="🏗️ Architecture" icon="building" href="/project-structure">
+    Deep dive into the system architecture and design patterns
+  </Card>
+  <Card title="🌐 Deployment" icon="cloud" href="/deployment/overview">
+    Learn how to deploy your customizations to production
+  </Card>
+  <Card title="🔧 API Docs" icon="wrench" href="/api-reference/introduction">
+    Complete technical API reference and documentation
+  </Card>
+</CardGroup>
+
+---
+
+<Success>
+**Development Environment Ready!** 🎉 You're now set up to contribute, customize, and extend the Book Recommender System. Happy coding! 💻
+</Success>

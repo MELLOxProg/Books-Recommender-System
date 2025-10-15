@@ -7,12 +7,12 @@
   },
   "favicon": "/favicon.svg",
   "colors": {
-    "primary": "#0D9373",
-    "light": "#07C983",
-    "dark": "#0D9373",
+    "primary": "#1E40AF",
+    "light": "#3B82F6",
+    "dark": "#1E3A8A",
     "anchors": {
-      "from": "#0D9373",
-      "to": "#07C983"
+      "from": "#1E40AF",
+      "to": "#3B82F6"
     }
   },
   "topbarLinks": [
@@ -22,46 +22,97 @@
     }
   ],
   "topbarCtaButton": {
-    "name": "Try Demo",
+    "name": "Try Live Demo",
     "url": "https://share.streamlit.io"
   },
+  "tabs": [
+    {
+      "name": "API Reference",
+      "url": "api-reference"
+    },
+    {
+      "name": "Examples",
+      "url": "examples"
+    }
+  ],
+  "anchors": [
+    {
+      "name": "Community",
+      "icon": "github",
+      "url": "https://github.com/MELLOxProg/Books-Recommender-System"
+    },
+    {
+      "name": "Demo",
+      "icon": "play",
+      "url": "https://share.streamlit.io"
+    }
+  ],
   "navigation": [
     {
-      "group": "Getting Started",
+      "group": "Get Started",
       "pages": [
         "introduction",
         "quickstart",
-        "project-structure"
+        "installation"
       ]
     },
     {
-      "group": "Features & Demo",
+      "group": "Core Concepts",
       "pages": [
-        "features",
-        "demo",
-        "how-it-works"
+        "how-it-works",
+        "collaborative-filtering",
+        "data-processing"
+      ]
+    },
+    {
+      "group": "User Guide",
+      "pages": [
+        "using-the-app",
+        "understanding-recommendations",
+        "troubleshooting"
       ]
     },
     {
       "group": "Development",
       "pages": [
-        "setup",
-        "ml-pipeline",
-        "streamlit-app",
-        "deployment"
+        "project-structure",
+        "development-setup",
+        "machine-learning-pipeline",
+        "model-training"
       ]
     },
     {
-      "group": "Technical Details",
+      "group": "Deployment",
       "pages": [
-        "data-processing",
-        "model-architecture",
-        "api-reference"
+        "deployment/overview",
+        "deployment/streamlit-cloud",
+        "deployment/heroku",
+        "deployment/docker"
+      ]
+    },
+    {
+      "group": "API Reference",
+      "pages": [
+        "api-reference/introduction",
+        "api-reference/streamlit-functions",
+        "api-reference/ml-functions"
+      ]
+    },
+    {
+      "group": "Examples",
+      "pages": [
+        "examples/basic-usage",
+        "examples/custom-deployment",
+        "examples/extending-the-model"
       ]
     }
   ],
   "footerSocials": {
-    "github": "https://github.com/MELLOxProg/Books-Recommender-System",
-    "linkedin": "https://www.linkedin.com/in/melloxprog"
+    "github": "https://github.com/MELLOxProg/Books-Recommender-System"
+  },
+  "feedback": {
+    "thumbsRating": true,
+    "suggestEdit": true,
+    "raiseIssue": true
   }
 }
