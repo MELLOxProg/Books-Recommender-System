@@ -17,73 +17,46 @@
   },
   "topbarLinks": [
     {
-      "name": "Support",
-      "url": "mailto:snoopynirav@gmail.com"
+      "name": "GitHub",
+      "url": "https://github.com/MELLOxProg/Books-Recommender-System"
     }
   ],
   "topbarCtaButton": {
-    "name": "Dashboard",
-    "url": "https://dashboard.mintlify.com"
+    "name": "Try Demo",
+    "url": "https://share.streamlit.io"
   },
-  "tabs": [
-    {
-      "name": "API Reference",
-      "url": "api-reference"
-    }
-  ],
-  "anchors": [
-    {
-      "name": "Documentation",
-      "icon": "book-open-cover",
-      "url": "https://mintlify.com/docs"
-    },
-    {
-      "name": "Community",
-      "icon": "slack",
-      "url": "https://mintlify.com/community"
-    },
-    {
-      "name": "Blog",
-      "icon": "newspaper",
-      "url": "https://mintlify.com/blog"
-    }
-  ],
   "navigation": [
     {
-      "group": "Get Started",
+      "group": "Getting Started",
       "pages": [
         "introduction",
         "quickstart",
-        "development"
+        "project-structure"
       ]
     },
     {
-      "group": "Machine Learning",
+      "group": "Features & Demo",
       "pages": [
-        "essentials/collaborative-filtering",
-        "essentials/model-architecture",
-        "essentials/data-processing"
+        "features",
+        "demo",
+        "how-it-works"
       ]
     },
     {
-      "group": "Deployment",
+      "group": "Development",
       "pages": [
-        "deployment/streamlit",
-        "deployment/heroku",
-        "deployment/docker"
+        "setup",
+        "ml-pipeline",
+        "streamlit-app",
+        "deployment"
       ]
     },
     {
-      "group": "API Documentation",
+      "group": "Technical Details",
       "pages": [
-        "api-reference/introduction"
-      ]
-    },
-    {
-      "group": "Endpoint Examples",
-      "pages": [
-        "api-reference/endpoint/get-recommendations",
-        "api-reference/endpoint/get-book-details"
+        "data-processing",
+        "model-architecture",
+        "api-reference"
       ]
     }
   ],

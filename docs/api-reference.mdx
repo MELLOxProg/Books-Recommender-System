@@ -1,14 +1,14 @@
 ---
-title: 'API Documentation'
-description: 'Learn how to integrate with the Book Recommender System programmatically'
+title: 'API Reference'
+description: 'Programmatic interface for the Book Recommender System'
 ---
 
 ## API Overview
 
-The Book Recommender System provides a programmatic interface for generating book recommendations using collaborative filtering. While the primary interface is through the Streamlit web application, you can also integrate the recommendation engine directly into your own applications.
+The Book Recommender System provides a programmatic interface for generating book recommendations. While the primary interface is through the Streamlit web application, you can also integrate the recommendation engine directly into your own applications.
 
 <Note>
-  The current system is designed as a standalone application. For production API usage, consider wrapping the core functions in a REST API framework like FastAPI or Flask.
+The current system is designed as a standalone application. For production API usage, consider wrapping the core functions in a REST API framework like FastAPI or Flask.
 </Note>
 
 ## Core Functions
@@ -17,7 +17,7 @@ The Book Recommender System provides a programmatic interface for generating boo
 
 The heart of the system is the `recommend_book()` function that provides book suggestions:
 
-```python path=/app.py start=39
+```python
 def recommend_book(book_name):
     """
     Generate book recommendations using k-NN collaborative filtering
@@ -58,7 +58,7 @@ def recommend_book(book_name):
 
 The `fetch_poster()` function retrieves book cover images:
 
-```python path=/app.py start=19
+```python
 def fetch_poster(suggestions):
     """
     Fetch book cover URLs for recommended books
@@ -94,9 +94,9 @@ def fetch_poster(suggestions):
 
 ### Python Integration
 
-<Tabs>
-  <Tab title="Direct Integration">
-    ```python path=null start=null
+<AccordionGroup>
+  <Accordion title="Direct Integration">
+    ```python
     import pickle
     import numpy as np
     
@@ -170,35 +170,6 @@ def fetch_poster(suggestions):
                 
             except Exception as e:
                 return {'error': f'Error generating recommendations: {str(e)}'}
-        
-        def get_book_info(self, book_name):
-            """Get detailed information about a specific book"""
-            if book_name not in self.book_pivot.index:
-                return {'error': f'Book "{book_name}" not found'}
-            
-            book_data = self.final_rating[
-                self.final_rating['title'] == book_name
-            ].iloc[0]
-            
-            return {
-                'title': book_data['Book-Title'],
-                'author': book_data['Book-Author'],
-                'publisher': book_data.get('Publisher', 'Unknown'),
-                'year': book_data.get('Year-Of-Publication', 'Unknown'),
-                'isbn': book_data.get('ISBN', ''),
-                'image_url': book_data.get('Image-URL-M', ''),
-                'average_rating': self.book_pivot.loc[book_name].mean(),
-                'total_ratings': (self.book_pivot.loc[book_name] > 0).sum()
-            }
-        
-        def search_books(self, query, limit=10):
-            """Search for books by title"""
-            query_lower = query.lower()
-            matches = [
-                book for book in self.book_names 
-                if query_lower in book.lower()
-            ]
-            return matches[:limit]
     
     # Usage example
     recommender = BookRecommender()
@@ -210,10 +181,10 @@ def fetch_poster(suggestions):
     for i, book in enumerate(result['recommendations'], 1):
         print(f"{i}. {book['title']} by {book['author']} (similarity: {book['similarity_score']:.3f})")
     ```
-  </Tab>
+  </Accordion>
 
-  <Tab title="Batch Processing">
-    ```python path=null start=null
+  <Accordion title="Batch Processing">
+    ```python
     import pandas as pd
     from concurrent.futures import ThreadPoolExecutor
     import json
@@ -263,27 +234,6 @@ def fetch_poster(suggestions):
                 json.dump(results, f, indent=2, default=str)
             
             print(f"Results exported to {output_file}")
-        
-        def create_recommendation_report(self, book_list):
-            """Generate a comprehensive recommendation report"""
-            results = self.batch_recommendations(book_list)
-            
-            # Create summary statistics
-            successful_recs = sum(1 for r in results.values() if 'recommendations' in r)
-            failed_recs = len(results) - successful_recs
-            
-            report = {
-                'summary': {
-                    'total_books': len(book_list),
-                    'successful_recommendations': successful_recs,
-                    'failed_recommendations': failed_recs,
-                    'success_rate': successful_recs / len(book_list) * 100
-                },
-                'results': results,
-                'generated_at': pd.Timestamp.now().isoformat()
-            }
-            
-            return report
     
     # Usage example
     batch_recommender = BatchRecommender()
@@ -296,20 +246,18 @@ def fetch_poster(suggestions):
         "pride and prejudice"
     ]
     
-    # Generate report
-    report = batch_recommender.create_recommendation_report(books_to_process)
-    
-    print(f"Success rate: {report['summary']['success_rate']:.1f}%")
-    batch_recommender.export_recommendations(report)
+    # Generate recommendations
+    results = batch_recommender.batch_recommendations(books_to_process)
+    batch_recommender.export_recommendations(results)
     ```
-  </Tab>
-</Tabs>
+  </Accordion>
+</AccordionGroup>
 
 ### REST API Wrapper
 
 Create a REST API wrapper using FastAPI:
 
-```python path=null start=null
+```python
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from typing import List, Optional
@@ -344,12 +292,6 @@ class RecommendationResponse(BaseModel):
 async def root():
     return {"message": "Book Recommender API", "version": "1.0.0"}
 
-@app.get("/books/search")
-async def search_books(q: str, limit: int = 10):
-    """Search for books by title"""
-    results = recommender.search_books(q, limit)
-    return {"query": q, "results": results, "count": len(results)}
-
 @app.post("/recommendations", response_model=RecommendationResponse)
 async def get_recommendations(request: RecommendationRequest):
     """Get book recommendations"""
@@ -357,16 +299,6 @@ async def get_recommendations(request: RecommendationRequest):
         request.book_name, 
         request.num_recommendations
     )
-    
-    if 'error' in result:
-        raise HTTPException(status_code=404, detail=result['error'])
-    
-    return result
-
-@app.get("/books/{book_name}/info")
-async def get_book_info(book_name: str):
-    """Get detailed book information"""
-    result = recommender.get_book_info(book_name)
     
     if 'error' in result:
         raise HTTPException(status_code=404, detail=result['error'])
@@ -429,7 +361,7 @@ if __name__ == "__main__":
   <Accordion title="Model Loading">
     Load models once at startup and reuse them:
     
-    ```python path=null start=null
+    ```python
     # Global model loading (recommended for APIs)
     _recommender_instance = None
 
@@ -444,7 +376,7 @@ if __name__ == "__main__":
   <Accordion title="Caching">
     Implement caching for frequently requested recommendations:
     
-    ```python path=null start=null
+    ```python
     from functools import lru_cache
     import hashlib
 
@@ -458,7 +390,7 @@ if __name__ == "__main__":
   <Accordion title="Async Processing">
     Use async processing for better concurrency:
     
-    ```python path=null start=null
+    ```python
     import asyncio
     from concurrent.futures import ThreadPoolExecutor
 
@@ -486,7 +418,7 @@ if __name__ == "__main__":
 
 ### Robust Error Handling
 
-```python path=null start=null
+```python
 def safe_recommend_book(book_name: str, fallback_to_popular=True):
     """
     Generate recommendations with comprehensive error handling

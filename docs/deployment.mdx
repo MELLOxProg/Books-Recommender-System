@@ -1,0 +1,548 @@
+---
+title: 'Deployment'
+description: 'Complete deployment guide for the Book Recommender System'
+---
+
+## Deployment Overview
+
+The Book Recommender System can be deployed across multiple platforms, from local development to production cloud environments. This guide covers all major deployment options.
+
+## 🚀 Deployment Options
+
+<CardGroup cols={2}>
+  <Card title="Streamlit Cloud" icon="cloud" href="#streamlit-cloud">
+    Free cloud hosting with GitHub integration
+  </Card>
+  <Card title="Heroku" icon="rocket" href="#heroku">
+    Scalable cloud platform with custom domains
+  </Card>
+  <Card title="Docker" icon="container" href="#docker">
+    Containerized deployment for any environment
+  </Card>
+  <Card title="Local Server" icon="server" href="#local-server">
+    Self-hosted deployment options
+  </Card>
+</CardGroup>
+
+## ☁️ Streamlit Cloud
+
+### Prerequisites
+
+- GitHub repository with your code
+- Streamlit Cloud account (free)
+- All model artifacts included in repository
+
+### Deployment Steps
+
+<Steps>
+  <Step title="Prepare Repository">
+    Ensure your repository contains:
+    ```
+    ├── app.py
+    ├── requirements.txt
+    ├── artifacts/
+    │   ├── model.pkl
+    │   ├── book_names.pkl
+    │   ├── book_pivot.pkl
+    │   └── final_rating.pkl
+    └── README.md
+    ```
+  </Step>
+
+  <Step title="Optimize Requirements">
+    Create minimal `requirements.txt`:
+    ```txt
+    streamlit>=1.28.0
+    numpy>=1.21.0
+    pandas>=1.3.0
+    scikit-learn>=1.0.0
+    ```
+  </Step>
+
+  <Step title="Deploy to Streamlit Cloud">
+    1. Go to [share.streamlit.io](https://share.streamlit.io)
+    2. Sign in with GitHub
+    3. Click "New app"
+    4. Select repository: `MELLOxProg/Books-Recommender-System`
+    5. Set main file: `app.py`
+    6. Click "Deploy!"
+  </Step>
+
+  <Step title="Monitor Deployment">
+    Watch deployment logs and access your app at the provided URL
+  </Step>
+</Steps>
+
+### Streamlit Cloud Configuration
+
+```toml
+# .streamlit/config.toml
+[server]
+headless = true
+enableCORS = false
+enableWebsocketCompression = true
+
+[theme]
+primaryColor = "#0D9373"
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#F0F2F6"
+textColor = "#262730"
+```
+
+## 🚀 Heroku
+
+### Prerequisites
+
+- Heroku account
+- Heroku CLI installed
+- Git repository
+
+### Deployment Steps
+
+<Steps>
+  <Step title="Install Heroku CLI">
+    ```bash
+    # Download from https://devcenter.heroku.com/articles/heroku-cli
+    heroku --version
+    ```
+  </Step>
+
+  <Step title="Create Heroku App">
+    ```bash
+    heroku login
+    heroku create your-book-recommender-app
+    ```
+  </Step>
+
+  <Step title="Configure Environment">
+    ```bash
+    # Set environment variables
+    heroku config:set DEBUG=False
+    heroku config:set STREAMLIT_SERVER_PORT=8501
+    ```
+  </Step>
+
+  <Step title="Deploy Application">
+    ```bash
+    git add .
+    git commit -m "Deploy to Heroku"
+    git push heroku main
+    ```
+  </Step>
+
+  <Step title="Open Application">
+    ```bash
+    heroku open
+    ```
+  </Step>
+</Steps>
+
+### Heroku Configuration Files
+
+<AccordionGroup>
+  <Accordion title="Procfile">
+    ```
+    web: sh setup.sh && streamlit run app.py
+    ```
+    Specifies how to run the application
+  </Accordion>
+
+  <Accordion title="setup.sh">
+    ```bash
+    mkdir -p ~/.streamlit/
+
+    echo "\
+    [server]\n\
+    port = $PORT\n\
+    enableCORS = false\n\
+    headless = true\n\
+    " > ~/.streamlit/config.toml
+    ```
+    Creates Streamlit configuration
+  </Accordion>
+
+  <Accordion title="requirements.txt">
+    ```
+    streamlit==1.28.1
+    numpy==1.24.3
+    pandas==2.0.3
+    scikit-learn==1.3.0
+    ```
+    Optimized for Heroku deployment
+  </Accordion>
+</AccordionGroup>
+
+### Handling Large Files
+
+<Warning>
+Heroku has a 500MB slug size limit. If your model files are too large, consider these solutions:
+</Warning>
+
+<AccordionGroup>
+  <Accordion title="Git LFS">
+    ```bash
+    # Install git-lfs
+    git lfs install
+    
+    # Track large files
+    git lfs track "*.pkl"
+    git lfs track "data/*.csv"
+    
+    # Commit and push
+    git add .gitattributes
+    git commit -m "Add LFS tracking"
+    git push heroku main
+    ```
+  </Accordion>
+
+  <Accordion title="Cloud Storage">
+    ```python
+    # Download models from cloud storage on startup
+    import urllib.request
+    import os
+    
+    def download_model_if_needed():
+        model_url = "https://your-storage.com/model.pkl"
+        model_path = "artifacts/model.pkl"
+        
+        if not os.path.exists(model_path):
+            st.info("Downloading model files...")
+            urllib.request.urlretrieve(model_url, model_path)
+            st.success("Model downloaded!")
+    ```
+  </Accordion>
+
+  <Accordion title="Model Compression">
+    ```python
+    import joblib
+    
+    # Use joblib for better compression
+    def save_compressed_model(model, filepath):
+        joblib.dump(model, filepath, compress=3)
+    
+    def load_compressed_model(filepath):
+        return joblib.load(filepath)
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## 🐳 Docker
+
+### Dockerfile
+
+```dockerfile
+FROM python:3.9-slim
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements and install Python dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy application code
+COPY app.py .
+COPY setup.sh .
+COPY artifacts/ ./artifacts/
+
+# Make setup script executable
+RUN chmod +x setup.sh
+
+# Create non-root user
+RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
+USER appuser
+
+# Expose port
+EXPOSE 8501
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+  CMD curl -f http://localhost:8501/_stcore/health || exit 1
+
+# Run application
+CMD ["sh", "setup.sh"]
+```
+
+### Docker Compose
+
+```yaml
+version: '3.8'
+
+services:
+  book-recommender:
+    build: .
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./artifacts:/app/artifacts:ro
+    environment:
+      - STREAMLIT_SERVER_PORT=8501
+      - STREAMLIT_SERVER_ADDRESS=0.0.0.0
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+```
+
+### Docker Deployment
+
+<Steps>
+  <Step title="Build Image">
+    ```bash
+    docker build -t book-recommender .
+    ```
+  </Step>
+
+  <Step title="Run Container">
+    ```bash
+    docker run -d \
+      --name book-recommender-app \
+      -p 8501:8501 \
+      -v $(pwd)/artifacts:/app/artifacts:ro \
+      book-recommender
+    ```
+  </Step>
+
+  <Step title="Using Docker Compose">
+    ```bash
+    docker-compose up -d
+    ```
+  </Step>
+
+  <Step title="Access Application">
+    Open `http://localhost:8501` in your browser
+  </Step>
+</Steps>
+
+## 🖥️ Local Server
+
+### Production Server Setup
+
+<AccordionGroup>
+  <Accordion title="Using systemd">
+    ```ini
+    # /etc/systemd/system/book-recommender.service
+    [Unit]
+    Description=Book Recommender System
+    After=network.target
+
+    [Service]
+    Type=simple
+    User=appuser
+    WorkingDirectory=/opt/book-recommender
+    ExecStart=/opt/book-recommender/venv/bin/streamlit run app.py
+    Restart=always
+    Environment=STREAMLIT_SERVER_PORT=8501
+    Environment=STREAMLIT_SERVER_ADDRESS=0.0.0.0
+
+    [Install]
+    WantedBy=multi-user.target
+    ```
+  </Accordion>
+
+  <Accordion title="Using nginx reverse proxy">
+    ```nginx
+    # /etc/nginx/sites-available/book-recommender
+    server {
+        listen 80;
+        server_name your-domain.com;
+
+        location / {
+            proxy_pass http://localhost:8501;
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection "upgrade";
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## 🔧 Environment Configuration
+
+### Environment Variables
+
+<AccordionGroup>
+  <Accordion title="Development">
+    ```bash
+    DEBUG=true
+    STREAMLIT_SERVER_PORT=8501
+    STREAMLIT_SERVER_ADDRESS=localhost
+    ```
+  </Accordion>
+
+  <Accordion title="Production">
+    ```bash
+    DEBUG=false
+    STREAMLIT_SERVER_PORT=8501
+    STREAMLIT_SERVER_ADDRESS=0.0.0.0
+    STREAMLIT_SERVER_HEADLESS=true
+    ```
+  </Accordion>
+
+  <Accordion title="Cloud Storage">
+    ```bash
+    AWS_ACCESS_KEY_ID=your_key
+    AWS_SECRET_ACCESS_KEY=your_secret
+    S3_BUCKET=your-bucket-name
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## 📊 Monitoring & Maintenance
+
+### Health Checks
+
+```python
+# Add to your app.py
+def health_check():
+    """Check application health"""
+    checks = {
+        'model_loaded': model is not None,
+        'books_available': len(book_names) > 0,
+        'artifacts_present': all(os.path.exists(f'artifacts/{file}') 
+                                for file in ['model.pkl', 'book_names.pkl']),
+        'memory_usage': 'OK'
+    }
+    return all(checks.values()), checks
+
+# Display health status
+if st.sidebar.checkbox("Health Check"):
+    is_healthy, status = health_check()
+    status_color = "🟢" if is_healthy else "🔴"
+    st.sidebar.write(f"{status_color} System Status")
+    st.sidebar.json(status)
+```
+
+### Performance Monitoring
+
+<AccordionGroup>
+  <Accordion title="Application Metrics">
+    - Response times for recommendations
+    - Memory usage and CPU utilization
+    - User interaction tracking
+    - Error rates and exception handling
+  </Accordion>
+
+  <Accordion title="Business Metrics">
+    - Number of recommendations generated
+    - User engagement and session duration
+    - Popular books and recommendation patterns
+    - System uptime and availability
+  </Accordion>
+</AccordionGroup>
+
+## 🛠️ Troubleshooting
+
+### Common Deployment Issues
+
+<AccordionGroup>
+  <Accordion title="Build Failures">
+    **Problem**: Deployment fails during build
+    **Solutions**:
+    - Check `requirements.txt` for version conflicts
+    - Ensure all dependencies are compatible
+    - Verify file paths and imports
+    - Check for missing model artifacts
+  </Accordion>
+
+  <Accordion title="Memory Issues">
+    **Problem**: Application crashes due to memory limits
+    **Solutions**:
+    - Optimize data types (float32 vs float64)
+    - Use lazy loading for large datasets
+    - Implement caching strategies
+    - Consider upgrading deployment tier
+  </Accordion>
+
+  <Accordion title="Performance Issues">
+    **Problem**: Slow response times
+    **Solutions**:
+    - Implement caching for popular recommendations
+    - Optimize model loading and initialization
+    - Use CDN for static assets
+    - Consider horizontal scaling
+  </Accordion>
+</AccordionGroup>
+
+## 🚀 Scaling Considerations
+
+### Horizontal Scaling
+
+<CardGroup cols={2}>
+  <Card title="Load Balancing" icon="balance">
+    Distribute requests across multiple instances
+  </Card>
+  <Card title="Auto-scaling" icon="expand">
+    Automatically scale based on demand
+  </Card>
+  <Card title="Caching Layer" icon="database">
+    Redis or Memcached for session management
+  </Card>
+  <Card title="CDN Integration" icon="globe">
+    CloudFlare or AWS CloudFront for static assets
+  </Card>
+</CardGroup>
+
+### Database Considerations
+
+For production deployments with user data:
+
+```python
+# Example database integration
+import sqlite3
+import hashlib
+
+def log_recommendation(user_id, book_name, recommendations):
+    """Log recommendation for analytics"""
+    conn = sqlite3.connect('recommendations.db')
+    cursor = conn.cursor()
+    
+    cursor.execute('''
+        INSERT INTO recommendations 
+        (user_id, input_book, recommendations, timestamp)
+        VALUES (?, ?, ?, ?)
+    ''', (user_id, book_name, str(recommendations), datetime.now()))
+    
+    conn.commit()
+    conn.close()
+```
+
+## 🔐 Security Best Practices
+
+### Production Security
+
+<AccordionGroup>
+  <Accordion title="Input Validation">
+    - Sanitize user inputs
+    - Validate book names and parameters
+    - Prevent injection attacks
+    - Rate limiting for API endpoints
+  </Accordion>
+
+  <Accordion title="Data Protection">
+    - Encrypt sensitive data
+    - Secure model artifacts
+    - Regular security updates
+    - Access control and authentication
+  </Accordion>
+
+  <Accordion title="Infrastructure Security">
+    - HTTPS enforcement
+    - Firewall configuration
+    - Regular security audits
+    - Backup and disaster recovery
+  </Accordion>
+</AccordionGroup>
+
+Your Book Recommender System is now ready for deployment across any platform, from simple cloud hosting to enterprise-grade infrastructure!
