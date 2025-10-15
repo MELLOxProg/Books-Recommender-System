@@ -1,0 +1,188 @@
+---
+title: 'Quickstart'
+description: 'Get your Book Recommender System running in minutes'
+---
+
+## Setup your environment
+
+Get started with the Book Recommender System by setting up your local development environment.
+
+<AccordionGroup>
+  <Accordion title="Prerequisites">
+    - Python 3.7 or higher
+    - Git for version control
+    - Conda or pip for package management
+  </Accordion>
+</AccordionGroup>
+
+### Step 1: Clone the Repository
+
+<CodeGroup>
+
+```bash Clone with Git
+git clone https://github.com/yourusername/book-recommender-system.git
+cd book-recommender-system
+```
+
+```bash Download ZIP
+# Download the ZIP file from GitHub and extract it
+# Navigate to the extracted directory
+cd book-recommender-system
+```
+
+</CodeGroup>
+
+### Step 2: Create Environment
+
+<Tabs>
+  <Tab title="Conda">
+    ```bash
+    conda create -n books python=3.7.10 -y
+    conda activate books
+    ```
+  </Tab>
+  <Tab title="venv">
+    ```bash
+    python -m venv books
+    # On Windows
+    books\Scripts\activate
+    # On macOS/Linux  
+    source books/bin/activate
+    ```
+  </Tab>
+</Tabs>
+
+### Step 3: Install Dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+<Note>
+  The requirements.txt includes all necessary packages: Streamlit, NumPy, and the local package installation.
+</Note>
+
+### Step 4: Generate Model Files
+
+The system requires pre-trained model artifacts. If they're not included, run the Jupyter notebook to generate them:
+
+```bash
+jupyter notebook "Books Recommender.ipynb"
+```
+
+This will create the following files in the `artifacts/` directory:
+- `model.pkl` - Trained k-NN model
+- `book_names.pkl` - List of available book titles
+- `book_pivot.pkl` - User-item interaction matrix
+- `final_rating.pkl` - Processed ratings data
+
+### Step 5: Launch the Application
+
+```bash
+streamlit run app.py
+```
+
+The application will start and automatically open in your web browser at `http://localhost:8501`.
+
+<img
+  src="/demo/1.png"
+  alt="Book Recommender Interface"
+/>
+
+## Using the System
+
+<Steps>
+  <Step title="Select a Book">
+    Use the dropdown menu to type or select a book you've enjoyed. The system contains thousands of popular titles.
+  </Step>
+  <Step title="Get Recommendations">
+    Click the "Show Recommendation" button to generate 5 personalized book suggestions.
+  </Step>
+  <Step title="Explore Results">
+    Browse the recommended books with their cover images. Each recommendation is based on similar user preferences.
+  </Step>
+</Steps>
+
+<img
+  src="/demo/2.png"
+  alt="Book Recommendations Display"
+/>
+
+## Project Structure
+
+Understanding the codebase structure:
+
+```
+book-recommender-system/
+├── app.py                          # Streamlit web application
+├── Books Recommender.ipynb         # Model training notebook
+├── requirements.txt                # Python dependencies
+├── setup.py                       # Package configuration
+├── Procfile                       # Heroku deployment config
+├── setup.sh                       # Environment setup script
+├── artifacts/                     # Pre-trained models
+│   ├── model.pkl                  # k-NN recommendation model
+│   ├── book_names.pkl             # Available book titles
+│   ├── book_pivot.pkl             # User-item matrix
+│   └── final_rating.pkl           # Processed ratings data
+├── data/                          # Training datasets
+│   ├── BX-Books.csv              # Book metadata
+│   ├── BX-Users.csv              # User information
+│   └── BX-Book-Ratings.csv       # User ratings
+├── demo/                          # Application screenshots
+│   ├── 1.png                     # Interface demo
+│   ├── 2.png                     # Recommendations view
+│   ├── 3.png                     # Additional features
+│   └── 6.jpeg                    # Hero image
+└── src/                          # Source package
+    └── utils/                    # Utility modules
+```
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="ModuleNotFoundError: No module named 'src'">
+    Make sure you've installed the package in editable mode:
+    ```bash
+    pip install -e .
+    ```
+  </Accordion>
+
+  <Accordion title="FileNotFoundError: artifacts/model.pkl">
+    The model files need to be generated. Run the Jupyter notebook:
+    ```bash
+    jupyter notebook "Books Recommender.ipynb"
+    ```
+    Execute all cells to create the required pickle files.
+  </Accordion>
+
+  <Accordion title="Streamlit app won't start">
+    Ensure all dependencies are installed and you're in the correct directory:
+    ```bash
+    pip install streamlit numpy
+    cd path/to/book-recommender-system
+    streamlit run app.py
+    ```
+  </Accordion>
+
+  <Accordion title="Empty recommendations or errors">
+    This usually indicates missing or corrupted model files. Re-run the training notebook to regenerate the artifacts.
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Learn the Algorithm" icon="brain" href="/essentials/collaborative-filtering">
+    Understand how collaborative filtering works
+  </Card>
+  <Card title="Deploy to Production" icon="rocket" href="/deployment/heroku">
+    Host your app on Heroku or other platforms
+  </Card>
+  <Card title="Customize the Model" icon="wrench" href="/essentials/model-architecture">
+    Modify and improve the recommendation engine
+  </Card>
+  <Card title="API Integration" icon="code" href="/api-reference/introduction">
+    Build apps that use the recommendation system
+  </Card>
+</CardGroup>

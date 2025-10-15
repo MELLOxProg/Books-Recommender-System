@@ -1,0 +1,450 @@
+---
+title: 'Collaborative Filtering'
+description: 'Understanding the machine learning algorithm behind book recommendations'
+---
+
+## What is Collaborative Filtering?
+
+Collaborative filtering is a powerful machine learning technique that makes recommendations based on the collective behavior and preferences of users. Unlike content-based filtering, which relies on item features, collaborative filtering identifies patterns in user-item interactions to suggest new items.
+
+<img
+  src="/demo/3.png"
+  alt="Collaborative Filtering Visualization"
+/>
+
+## Types of Collaborative Filtering
+
+<Tabs>
+  <Tab title="User-Based">
+    **User-Based Collaborative Filtering** finds users with similar preferences and recommends items liked by similar users.
+    
+    ```python path=null start=null
+    # Example: If User A and User B both liked Books 1, 2, 3
+    # And User B also liked Book 4
+    # Then recommend Book 4 to User A
+    
+    def user_based_recommend(user_id, user_item_matrix, n_recommendations=5):
+        # Find similar users
+        user_similarities = cosine_similarity(user_item_matrix)
+        similar_users = user_similarities[user_id].argsort()[-10:][::-1]
+        
+        # Get recommendations from similar users
+        recommendations = []
+        for similar_user in similar_users:
+            user_items = user_item_matrix[similar_user]
+            recommendations.extend(user_items.nonzero()[0])
+        
+        return recommendations[:n_recommendations]
+    ```
+  </Tab>
+
+  <Tab title="Item-Based">
+    **Item-Based Collaborative Filtering** (used in our system) finds items similar to those a user has liked and recommends related items.
+    
+    ```python path=null start=null
+    # Example: If a user liked "Harry Potter"
+    # Find books similar to Harry Potter based on user ratings
+    # Recommend those similar books
+    
+    def item_based_recommend(item_id, item_similarity_matrix, n_recommendations=5):
+        # Get similarity scores for the item
+        similarities = item_similarity_matrix[item_id]
+        
+        # Sort and get top similar items
+        similar_items = similarities.argsort()[-n_recommendations-1:][::-1]
+        
+        return similar_items[1:]  # Exclude the item itself
+    ```
+  </Tab>
+
+  <Tab title="Matrix Factorization">
+    **Matrix Factorization** decomposes the user-item interaction matrix into lower-dimensional representations.
+    
+    ```python path=null start=null
+    from sklearn.decomposition import TruncatedSVD
+    
+    # Decompose the user-item matrix
+    svd = TruncatedSVD(n_components=50)
+    user_factors = svd.fit_transform(user_item_matrix)
+    item_factors = svd.components_.T
+    
+    # Reconstruct ratings
+    predicted_ratings = user_factors @ item_factors.T
+    ```
+  </Tab>
+</Tabs>
+
+## Our Implementation: k-Nearest Neighbors
+
+Our Book Recommender System uses **k-Nearest Neighbors (k-NN)** for item-based collaborative filtering:
+
+### Algorithm Overview
+
+<Steps>
+  <Step title="Data Preparation">
+    Create a book-user matrix where each row represents a book and each column represents a user's rating for that book.
+    
+    ```python path=null start=null
+    # Create pivot table: books × users
+    book_pivot = ratings.pivot_table(
+        index='Book-Title',
+        columns='User-ID', 
+        values='Book-Rating'
+    ).fillna(0)
+    
+    # Result: Matrix of shape (n_books, n_users)
+    # book_pivot[i][j] = rating of user j for book i
+    ```
+  </Step>
+
+  <Step title="Model Training">
+    Train the k-NN model using cosine similarity to measure book similarity.
+    
+    ```python path=null start=null
+    from sklearn.neighbors import NearestNeighbors
+    
+    model = NearestNeighbors(
+        n_neighbors=6,        # Find 6 similar books (including input)
+        algorithm='brute',    # Brute force for accuracy
+        metric='cosine'       # Cosine similarity metric
+    )
+    model.fit(book_pivot)
+    ```
+  </Step>
+
+  <Step title="Generate Recommendations">
+    For a given book, find the most similar books based on user rating patterns.
+    
+    ```python path=null start=null
+    def recommend_book(book_name):
+        # Get the book's rating vector
+        book_id = np.where(book_pivot.index == book_name)[0][0]
+        book_vector = book_pivot.iloc[book_id, :].values.reshape(1, -1)
+        
+        # Find similar books
+        distances, suggestions = model.kneighbors(book_vector, n_neighbors=6)
+        
+        # Return book recommendations
+        recommended_books = []
+        for i in range(1, len(suggestions[0])):  # Skip the input book
+            book_index = suggestions[0][i]
+            recommended_books.append(book_pivot.index[book_index])
+            
+        return recommended_books
+    ```
+  </Step>
+</Steps>
+
+## Similarity Metrics
+
+Understanding the different ways to measure similarity between items:
+
+<AccordionGroup>
+  <Accordion title="Cosine Similarity">
+    Measures the cosine of the angle between two rating vectors. Perfect for sparse data like book ratings.
+    
+    ```python path=null start=null
+    from sklearn.metrics.pairwise import cosine_similarity
+    
+    # Calculate cosine similarity
+    similarity = cosine_similarity(book_a_ratings, book_b_ratings)
+    
+    # Formula: cos(θ) = (A·B) / (||A|| ||B||)
+    # Range: [-1, 1] where 1 = identical, 0 = orthogonal, -1 = opposite
+    ```
+    
+    **Advantages:**
+    - Handles sparse data well
+    - Not affected by the magnitude of ratings
+    - Focus on rating patterns rather than absolute values
+  </Accordion>
+
+  <Accordion title="Euclidean Distance">
+    Measures the straight-line distance between two points in rating space.
+    
+    ```python path=null start=null
+    from sklearn.metrics.pairwise import euclidean_distances
+    
+    # Calculate Euclidean distance
+    distance = euclidean_distances(book_a_ratings, book_b_ratings)
+    
+    # Formula: √Σ(ai - bi)²
+    # Range: [0, ∞] where 0 = identical, larger = more different
+    ```
+    
+    **Considerations:**
+    - Sensitive to the magnitude of ratings
+    - May not work well with sparse data
+    - Better for dense, continuous data
+  </Accordion>
+
+  <Accordion title="Pearson Correlation">
+    Measures linear correlation between rating patterns.
+    
+    ```python path=null start=null
+    from scipy.stats import pearsonr
+    
+    # Calculate Pearson correlation
+    correlation, p_value = pearsonr(book_a_ratings, book_b_ratings)
+    
+    # Range: [-1, 1] where 1 = perfect positive correlation
+    # 0 = no correlation, -1 = perfect negative correlation
+    ```
+    
+    **Benefits:**
+    - Accounts for user rating bias
+    - Focuses on relative preferences
+    - Good for understanding rating patterns
+  </Accordion>
+</AccordionGroup>
+
+## Data Preprocessing
+
+Critical steps for effective collaborative filtering:
+
+### 1. Handling Sparse Data
+
+```python path=null start=null
+# Most users rate very few books, creating a sparse matrix
+print(f"Matrix sparsity: {(book_pivot == 0).sum().sum() / book_pivot.size * 100:.2f}%")
+
+# Filter out books with too few ratings
+min_ratings = 50
+popular_books = book_ratings.groupby('Book-Title').size()
+popular_books = popular_books[popular_books >= min_ratings].index
+
+# Filter users who rated too few books
+min_user_ratings = 20
+active_users = book_ratings.groupby('User-ID').size()
+active_users = active_users[active_users >= min_user_ratings].index
+
+# Create filtered dataset
+filtered_ratings = book_ratings[
+    (book_ratings['Book-Title'].isin(popular_books)) &
+    (book_ratings['User-ID'].isin(active_users))
+]
+```
+
+### 2. Rating Normalization
+
+```python path=null start=null
+# Normalize ratings to handle user bias
+from sklearn.preprocessing import StandardScaler
+
+# Per-user normalization (remove user bias)
+user_means = book_pivot.mean(axis=1)
+book_pivot_normalized = book_pivot.sub(user_means, axis=0)
+
+# Or use standardization
+scaler = StandardScaler()
+book_pivot_scaled = pd.DataFrame(
+    scaler.fit_transform(book_pivot.T).T,
+    index=book_pivot.index,
+    columns=book_pivot.columns
+)
+```
+
+### 3. Implicit vs Explicit Feedback
+
+<Tabs>
+  <Tab title="Explicit Feedback">
+    Direct ratings provided by users (1-5 stars, thumbs up/down).
+    
+    ```python path=null start=null
+    # Our system uses explicit ratings (1-10 scale)
+    explicit_ratings = book_ratings[book_ratings['Book-Rating'] > 0]
+    
+    # Convert to binary preference
+    implicit_feedback = explicit_ratings.copy()
+    implicit_feedback['Book-Rating'] = np.where(
+        implicit_feedback['Book-Rating'] >= 7, 1, 0
+    )
+    ```
+  </Tab>
+
+  <Tab title="Implicit Feedback">
+    Inferred preferences from user behavior (views, purchases, clicks).
+    
+    ```python path=null start=null
+    # Convert implicit signals to preference scores
+    def calculate_implicit_score(user_behavior):
+        score = 0
+        score += user_behavior['views'] * 0.1
+        score += user_behavior['time_spent'] * 0.3
+        score += user_behavior['purchases'] * 1.0
+        return min(score, 5.0)  # Cap at 5.0
+    ```
+  </Tab>
+</Tabs>
+
+## Evaluation Metrics
+
+Measuring the quality of recommendations:
+
+### 1. Accuracy Metrics
+
+<CodeGroup>
+
+```python Precision & Recall
+def calculate_precision_recall(recommendations, actual_likes, k=5):
+    """Calculate precision and recall at k"""
+    
+    # Get top-k recommendations
+    top_k_recs = recommendations[:k]
+    
+    # Calculate precision@k
+    relevant_retrieved = len(set(top_k_recs) & set(actual_likes))
+    precision_k = relevant_retrieved / k
+    
+    # Calculate recall@k  
+    recall_k = relevant_retrieved / len(actual_likes) if actual_likes else 0
+    
+    return precision_k, recall_k
+```
+
+```python RMSE (Root Mean Square Error)
+def calculate_rmse(predicted_ratings, actual_ratings):
+    """Calculate RMSE for rating predictions"""
+    
+    mse = np.mean((predicted_ratings - actual_ratings) ** 2)
+    rmse = np.sqrt(mse)
+    
+    return rmse
+```
+
+```python MAE (Mean Absolute Error)
+def calculate_mae(predicted_ratings, actual_ratings):
+    """Calculate MAE for rating predictions"""
+    
+    mae = np.mean(np.abs(predicted_ratings - actual_ratings))
+    
+    return mae
+```
+
+</CodeGroup>
+
+### 2. Ranking Metrics
+
+```python path=null start=null
+def calculate_ndcg(recommendations, relevance_scores, k=5):
+    """Calculate Normalized Discounted Cumulative Gain"""
+    
+    # DCG calculation
+    dcg = 0
+    for i, item in enumerate(recommendations[:k]):
+        relevance = relevance_scores.get(item, 0)
+        dcg += relevance / np.log2(i + 2)  # +2 because log2(1) = 0
+    
+    # IDCG calculation (ideal ranking)
+    ideal_relevance = sorted(relevance_scores.values(), reverse=True)[:k]
+    idcg = sum(rel / np.log2(i + 2) for i, rel in enumerate(ideal_relevance))
+    
+    # Normalized DCG
+    ndcg = dcg / idcg if idcg > 0 else 0
+    
+    return ndcg
+```
+
+## Challenges and Solutions
+
+<Warning>
+  **Cold Start Problem**: New books or users have no historical data for recommendations.
+</Warning>
+
+### Solutions for Cold Start:
+
+<AccordionGroup>
+  <Accordion title="Content-Based Fallback">
+    ```python path=null start=null
+    def hybrid_recommend(book_name, user_id=None):
+        """Combine collaborative and content-based filtering"""
+        
+        # Try collaborative filtering first
+        if has_sufficient_ratings(book_name):
+            return collaborative_recommend(book_name)
+        else:
+            # Fall back to content-based recommendations
+            return content_based_recommend(book_name)
+    ```
+  </Accordion>
+
+  <Accordion title="Popular Item Recommendations">
+    ```python path=null start=null
+    def get_popular_books(genre=None, n=10):
+        """Recommend popular books for new users"""
+        
+        if genre:
+            popular = book_ratings[book_ratings['genre'] == genre]
+        else:
+            popular = book_ratings
+            
+        return popular.groupby('Book-Title').agg({
+            'Book-Rating': ['mean', 'count']
+        }).sort_values([('Book-Rating', 'count'), ('Book-Rating', 'mean')], 
+                      ascending=False).head(n)
+    ```
+  </Accordion>
+
+  <Accordion title="Demographic Filtering">
+    ```python path=null start=null
+    def demographic_recommend(user_age, user_location):
+        """Recommend based on demographic similarity"""
+        
+        similar_users = users[
+            (users['age'].between(user_age-5, user_age+5)) &
+            (users['location'] == user_location)
+        ]['user_id']
+        
+        popular_among_similar = book_ratings[
+            book_ratings['User-ID'].isin(similar_users)
+        ].groupby('Book-Title')['Book-Rating'].mean().sort_values(ascending=False)
+        
+        return popular_among_similar.head(10)
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Best Practices
+
+<Tip>
+  **Model Performance**: Consider these factors for optimal collaborative filtering performance.
+</Tip>
+
+1. **Data Quality**
+   - Remove fake or spam ratings
+   - Handle duplicate entries
+   - Validate rating scales
+
+2. **Feature Engineering**
+   - Create temporal features (recent vs. old ratings)
+   - Consider rating frequency
+   - Add contextual information
+
+3. **Model Tuning**
+   - Experiment with different k values
+   - Try various similarity metrics
+   - Cross-validate hyperparameters
+
+4. **Scalability**
+   - Use approximate algorithms for large datasets
+   - Implement incremental learning
+   - Consider distributed computing
+
+## Advanced Techniques
+
+<CardGroup cols={2}>
+  <Card title="Deep Learning" icon="brain">
+    Neural Collaborative Filtering using embeddings and deep networks for complex user-item interactions.
+  </Card>
+  <Card title="Graph-Based" icon="network-wired">
+    Graph neural networks that model users and items as nodes with edges representing interactions.
+  </Card>
+  <Card title="Ensemble Methods" icon="layer-group">
+    Combine multiple collaborative filtering models for improved accuracy and robustness.
+  </Card>
+  <Card title="Real-time Learning" icon="clock">
+    Online learning algorithms that adapt to new user interactions in real-time.
+  </Card>
+</CardGroup>
+
+Collaborative filtering remains one of the most effective techniques for building recommendation systems, and our k-NN implementation provides a solid foundation for discovering great books based on community preferences.
